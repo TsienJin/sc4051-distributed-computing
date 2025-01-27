@@ -1,0 +1,10 @@
+version: "3"
+
+tasks:
+
+  ### Testing Suite
+  test:
+    desc: "Run tests"
+    cmds:
+      - echo "Starting server tests"
+      - go test ./... -v --race
