@@ -1,0 +1,13 @@
+
+
+### Ignore all IDE files
+.vs-code/
+.idea/
+
+### Ignore macos files
+.DS_Store/
+
+### Ignore env files
+.env
+.env.*
+!*.sample
