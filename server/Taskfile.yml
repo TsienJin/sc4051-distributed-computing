@@ -2,6 +2,12 @@ version: "3"
 
 tasks:
 
+  ### Run sanity entry point
+  sanity:
+    desc: "Run sanity entry point"
+    cmds:
+      - go run ./cmd/sanity.go
+
   ### Testing Suite
   test:
     desc: "Run tests"
