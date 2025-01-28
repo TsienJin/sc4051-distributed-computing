@@ -18,7 +18,7 @@ type PacketHeader struct {
 	Version       proto_defs.ProtocolVersion
 	MessageId     proto_defs.MessageId
 	MessageType   proto_defs.MessageType
-	PacketNumber  uint16
+	PacketNumber  uint8
 	TotalPackets  uint8
 	Flags         proto_defs.Flags
 	PayloadLength uint16
@@ -55,7 +55,7 @@ func PacketHeaderWithMessageType(v proto_defs.MessageType) PacketHeaderOption {
 	}
 }
 
-func PacketHeaderWithPacketNumber(v uint16) PacketHeaderOption {
+func PacketHeaderWithPacketNumber(v uint8) PacketHeaderOption {
 	return func(header *PacketHeader) {
 		header.PacketNumber = v
 	}
@@ -69,7 +69,7 @@ func PacketHeaderWithTotalPackets(v uint8) PacketHeaderOption {
 
 func PacketHeaderWithFlags(v proto_defs.Flags) PacketHeaderOption {
 	return func(header *PacketHeader) {
-		header.Flags = v
+		header.Flags = proto_defs.NewFlags(header.Flags, v)
 	}
 }
 
@@ -100,19 +100,19 @@ func NewPacketHeader(opts ...PacketHeaderOption) (*PacketHeader, error) {
 // Remaining fields are somewhat optional or can intrinsically be falsy
 func (p *PacketHeader) validate() error {
 	if p.Version == 0 {
-		return errors.New("packet header version not set")
+		return errors.New("packet Header version not set")
 	}
 
 	if p.MessageId == [16]byte{} {
-		return errors.New("packet header message id not set")
+		return errors.New("packet Header message id not set")
 	}
 
 	if p.MessageType == 0 {
-		return errors.New("packet header message type not set")
+		return errors.New("packet Header message type not set")
 	}
 
 	if p.TotalPackets == 0 {
-		return errors.New("packet header total packets not set")
+		return errors.New("packet Header total packets not set")
 	}
 
 	return nil

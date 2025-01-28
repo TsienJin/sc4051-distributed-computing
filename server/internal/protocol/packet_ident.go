@@ -4,7 +4,7 @@ import "server/internal/protocol/proto_defs"
 
 type PacketIdent struct {
 	MessageId    proto_defs.MessageId
-	PacketNumber uint16
+	PacketNumber uint8
 }
 
 func ExtractIdentFromPacket(p *Packet) PacketIdent {
