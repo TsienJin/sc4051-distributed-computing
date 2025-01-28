@@ -6,10 +6,13 @@ import "time"
 const PacketSizeLimit int = 2 << 9
 
 // PacketHeaderSize is the number of bytes used by the header
-const PacketHeaderSize = 24
+const PacketHeaderSize = 23
+
+// PacketChecksumSize is the number of bytes allocated to the checksum
+const PacketChecksumSize = 4
 
 // PacketPayloadSizeLimit is the maximum allowable size in bytes for the payload
-const PacketPayloadSizeLimit = PacketSizeLimit - PacketHeaderSize
+const PacketPayloadSizeLimit = PacketSizeLimit - PacketHeaderSize - PacketChecksumSize
 
 // MessageTimeout is the absolute maximum time allowed to wait for an ack
 const MessageTimeout time.Duration = time.Millisecond * 100
