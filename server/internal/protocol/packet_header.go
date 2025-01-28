@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"server/internal/protocol/proto_defs"
 )
 
@@ -114,6 +115,39 @@ func (p *PacketHeader) validate() error {
 	if p.TotalPackets == 0 {
 		return errors.New("packet Header total packets not set")
 	}
+
+	return nil
+}
+
+func (p *PacketHeader) MarshalBinary() ([]byte, error) {
+
+	buf := make([]byte, proto_defs.PacketHeaderSize)
+
+	buf[0] = uint8(p.Version)
+	copy(buf[1:], p.MessageId[:])
+	buf[17] = uint8(p.MessageType)
+	buf[18] = p.PacketNumber
+	buf[19] = p.TotalPackets
+	buf[20] = uint8(p.Flags)
+	binary.BigEndian.PutUint16(buf[21:], p.PayloadLength)
+
+	return buf, nil
+}
+
+func (p *PacketHeader) UnmarshalBinary(data []byte) error {
+	// Ensure the input data is at least the expected size
+	if len(data) < proto_defs.PacketHeaderSize {
+		return fmt.Errorf("insufficient data to unmarshal PacketHeader: expected %d bytes, got %d", proto_defs.PacketHeaderSize, len(data))
+	}
+
+	// Extract fields from the byte array
+	p.Version = proto_defs.ProtocolVersion(data[0])      // First byte: Protocol version
+	copy(p.MessageId[:], data[1:17])                     // Next 16 bytes: Message ID
+	p.MessageType = proto_defs.MessageType(data[17])     // Message type
+	p.PacketNumber = data[18]                            // Packet number
+	p.TotalPackets = data[19]                            // Total packets
+	p.Flags = proto_defs.Flags(data[20])                 // Flags
+	p.PayloadLength = binary.BigEndian.Uint16(data[21:]) // PayloadLength (last 2 bytes)
 
 	return nil
 }
