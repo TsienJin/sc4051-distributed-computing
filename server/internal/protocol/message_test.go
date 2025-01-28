@@ -27,8 +27,8 @@ func TestNewMessage(t *testing.T) {
 		t.Errorf("expcted 2 packets, received: %d", len(packets))
 	}
 
-	// Checks that the first payload is fully utilised
+	// Checks that the first Payload is fully utilised
 	if len(packets[0].Payload) != proto_defs.PacketPayloadSizeLimit {
-		t.Error("did not adhere to packet payload size limit")
+		t.Error("did not adhere to packet Payload size limit")
 	}
 }

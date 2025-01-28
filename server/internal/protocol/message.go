@@ -28,6 +28,12 @@ func (m *Message) ToPackets() ([]*Packet, error) {
 		nPackets++
 	}
 
+	// Manage flags for packets
+	packetFlags := proto_defs.NewFlags()
+	if nPackets > 1 {
+		packetFlags = proto_defs.NewFlags(packetFlags, proto_defs.FlagFragment)
+	}
+
 	packets := make([]*Packet, nPackets)
 
 	// Generate all the packets for the response
@@ -46,10 +52,11 @@ func (m *Message) ToPackets() ([]*Packet, error) {
 			copy(data, m.payload[leftLimit:rightLimit])
 		}
 
-		// Create packet header
+		// Create packet Header
 		packetHeader, err := NewPacketHeader(
 			PacketHeaderFromDistilled(m.header),
-			PacketHeaderWithPacketNumber(uint16(i)),
+			PacketHeaderWithFlags(packetFlags),
+			PacketHeaderWithPacketNumber(uint8(i)),
 			PacketHeaderWithTotalPackets(uint8(nPackets)),
 			PacketHeaderWithPayloadLength(uint16(len(data))),
 		)
@@ -58,7 +65,11 @@ func (m *Message) ToPackets() ([]*Packet, error) {
 		}
 
 		// Add packet to array
-		packets[i] = NewPacket(*packetHeader, data)
+		p, err := NewPacket(*packetHeader, data)
+		if err != nil {
+			return nil, err
+		}
+		packets[i] = p
 	}
 
 	return packets, nil
