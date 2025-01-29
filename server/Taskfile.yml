@@ -13,4 +13,10 @@ tasks:
     desc: "Run tests"
     cmds:
       - echo "Starting server tests"
-      - go test ./... -v --race
+      - go test ./internal/... -v --race
+
+  ### Execute server (locally)
+  start:
+    desc: "Starts server"
+    cmds:
+      - go run ./cmd/server.go

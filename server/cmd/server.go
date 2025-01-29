@@ -1,5 +1,8 @@
 package main
 
+import "server/internal/server"
+
 func main() {
-	println("Hello from server!")
+	println("Starting server!")
+	server.Serve()
 }
