@@ -3,6 +3,7 @@ package protocol
 import (
 	"bytes"
 	"encoding/binary"
+	"server/internal/protocol/proto_defs"
 )
 
 // Packet s are the data structs used to represent the underlying data.
@@ -51,4 +52,28 @@ func (p *Packet) ToBytes() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (p *Packet) MarshalBinary() ([]byte, error) {
+	return p.ToBytes()
+}
+
+func (p *Packet) UnmarshalBinary(data []byte) error {
+
+	// Handle header
+	packetHeader := &PacketHeader{}
+	if err := packetHeader.UnmarshalBinary(data[:proto_defs.PacketHeaderSize]); err != nil {
+		return err
+	}
+	p.Header = *packetHeader
+
+	// Handle payload data
+	payloadData := make([]byte, p.Header.PayloadLength)
+	copy(payloadData, data[proto_defs.PacketHeaderSize:proto_defs.PacketHeaderSize+p.Header.PayloadLength])
+	p.Payload = payloadData
+
+	// Handle checksum
+	p.Checksum = GetChecksumFromChecksumBytes(data[proto_defs.PacketHeaderSize+p.Header.PayloadLength : proto_defs.PacketHeaderSize+p.Header.PayloadLength+proto_defs.PacketChecksumSize])
+
+	return nil
 }
