@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	"reflect"
+	"github.com/google/go-cmp/cmp"
 	"server/internal/protocol/proto_defs"
 	"testing"
 )
@@ -32,7 +32,7 @@ func TestPacket_MarshalUnmarshalBinary(t *testing.T) {
 	regenPacket := &Packet{}
 	_ = regenPacket.UnmarshalBinary(packetBytes)
 
-	if !reflect.DeepEqual(regenPacket, packet) {
+	if !cmp.Equal(regenPacket, packet) {
 		t.Error("Packets do not match after marshalling/unmarshalling")
 	}
 
