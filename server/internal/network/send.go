@@ -15,5 +15,6 @@ func SendPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) error {
 	if _, errSend := c.WriteToUDP(data, a); errSend != nil {
 		return errSend
 	}
+	GetSendHistoryInstance().Append(p)
 	return nil
 }
