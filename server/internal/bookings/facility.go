@@ -151,13 +151,21 @@ func (f *Facility) UpdateBooking(id uint16, deltaHours int) error {
 	return nil
 }
 
-func (f *Facility) DeleteBooking(id uint16) {
+func (f *Facility) DeleteBooking(id uint16) bool {
 	f.Lock()
 	defer f.Unlock()
 	f.clean()
 
+	deleted := false
+
 	// Remove bookings that match Id
 	f.Bookings = slices.DeleteFunc(f.Bookings, func(b *Booking) bool {
-		return b.Id == id
+		if b.Id == id {
+			deleted = true
+			return true
+		}
+		return false
 	})
+
+	return deleted
 }
