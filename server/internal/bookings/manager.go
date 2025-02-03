@@ -47,7 +47,7 @@ func (m *Manager) QueryFacility(n FacilityName, days int) ([]byte, error) {
 		slog.Error("Facility does not exist!", "FacilityName", n)
 		return []byte{}, errors.New("facility does not exist")
 	}
-
+	m.monitor.Update(n, fmt.Sprintf("Executing query on %s for %d days", n, days))
 	return m.Facilities[n].QueryAvailability(days), nil
 }
 
@@ -63,12 +63,16 @@ func (m *Manager) DeleteFacility(name FacilityName) error {
 			return errors.New("facility does not exists")
 		case len(r.Bookings) > 0:
 			slog.Error("Attempted to delete a Facility with existing bookings!", "Facility", name, "bookings", r)
+			m.monitor.Update(name, "A deletion was attempted on this facility! There are existing bookings can cannot be deleted yet.")
 			return errors.New("facility has existing bookings")
 		}
 	}
 
 	// "OK" to delete at this point
 	delete(m.Facilities, name)
+	m.monitor.Update(name, "This facility has been deleted.")
+	slog.Info("Deleted facility", "FacilityName", name)
+	m.monitor.Clear(name)
 	return nil
 }
 
@@ -79,7 +83,7 @@ func (m *Manager) NewBooking(n FacilityName, b Booking) error {
 	}
 	if err := m.Facilities[n].Book(b); err != nil {
 		slog.Error("Unable to make booking", "FacilityName", n, "Booking", b)
-		m.monitor.Update(n, fmt.Sprintf("Error attempting to make booking at %s with %v", n, b))
+		m.monitor.Update(n, fmt.Sprintf("Error attempting to make booking at %s with %v.", n, b))
 		return err
 	}
 	slog.Info("Made successful booking", "FacilityName", n, "Booking", b)
@@ -92,7 +96,13 @@ func (m *Manager) UpdateBooking(n FacilityName, bookingId uint16, deltaHours int
 		slog.Error("Facility does not exist!", "FacilityName", n)
 		return errors.New("facility does not exist")
 	}
-	return m.Facilities[n].UpdateBooking(bookingId, deltaHours)
+	if err := m.Facilities[n].UpdateBooking(bookingId, deltaHours); err != nil {
+		slog.Error("Failed to update booking!", "BookingId", bookingId, "DeltaHours", deltaHours)
+		m.monitor.Update(n, fmt.Sprintf("Failed to update BookingId %v by %d hours.", bookingId, deltaHours))
+		return err
+	}
+	m.monitor.Update(n, fmt.Sprintf("Updated BookingId %v by %d hours", bookingId, deltaHours))
+	return nil
 }
 
 func (m *Manager) DeleteBooking(n FacilityName, bookingId uint16) error {
@@ -103,10 +113,10 @@ func (m *Manager) DeleteBooking(n FacilityName, bookingId uint16) error {
 
 	if deleted := m.Facilities[n].DeleteBooking(bookingId); deleted {
 		slog.Info("Deleted booking", "BookingId", bookingId)
-		m.monitor.Update(n, fmt.Sprintf("Successfully deleted Booking %X from %s", bookingId, n))
+		m.monitor.Update(n, fmt.Sprintf("Successfully deleted Booking %X from %s.", bookingId, n))
 	} else {
 		slog.Warn("Attempted to delete non-existent booking", "BookingId", bookingId)
-		m.monitor.Update(n, fmt.Sprintf("Attempted to delete non-existant Booking %X from %s", bookingId, n))
+		m.monitor.Update(n, fmt.Sprintf("Attempted to delete non-existant Booking %X from %s.", bookingId, n))
 	}
 
 	return nil
