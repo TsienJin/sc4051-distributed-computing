@@ -1,13 +1,17 @@
 package protocol
 
-import "server/internal/protocol/proto_defs"
+import (
+	"encoding"
+	"log/slog"
+	"server/internal/protocol/proto_defs"
+)
 
 type Message struct {
 	header  *PacketHeaderDistilled
 	payload []byte
 }
 
-func NewMessage(
+func NewMessageFromBytes(
 	header *PacketHeaderDistilled,
 	payload []byte,
 ) *Message {
@@ -15,6 +19,18 @@ func NewMessage(
 		header:  header,
 		payload: payload,
 	}
+}
+
+func NewMessage(
+	header *PacketHeaderDistilled,
+	p encoding.BinaryMarshaler,
+) (*Message, error) {
+	data, err := p.MarshalBinary()
+	if err != nil {
+		slog.Error("Unable to marshal payload into bytes", "Payload", p)
+		return nil, err
+	}
+	return NewMessageFromBytes(header, data), nil
 }
 
 func (m *Message) ToPackets() ([]*Packet, error) {

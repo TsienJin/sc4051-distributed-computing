@@ -15,7 +15,7 @@ func main() {
 		RequireAck:  true,
 	}
 
-	msg := protocol.NewMessage(headerDistilled, []byte{1, 2, 3})
+	msg := protocol.NewMessageFromBytes(headerDistilled, []byte{1, 2, 3})
 
 	packets, _ := msg.ToPackets()
 

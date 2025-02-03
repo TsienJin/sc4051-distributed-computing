@@ -18,7 +18,7 @@ func TestNewMessage(t *testing.T) {
 		data[i] = byte(i + 1)
 	}
 
-	msg := NewMessage(distilledHeader, data)
+	msg := NewMessageFromBytes(distilledHeader, data)
 
 	packets, _ := msg.ToPackets()
 
