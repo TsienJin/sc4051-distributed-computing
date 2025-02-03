@@ -11,6 +11,7 @@ import (
 type MonitorConsumer struct {
 	Channel chan string
 	Cancel  context.CancelFunc
+	closed  sync.Once
 }
 
 type Monitor struct {
@@ -50,9 +51,11 @@ func (m *Monitor) Watch(f FacilityName, ttl time.Duration) *MonitorConsumer {
 		slog.Info("Created MonitorConsumer", "facility", f)
 
 		<-ctx.Done()
-		slog.Info("MonitorConsumer expired, removing from watchers")
+		slog.Info("MonitorConsumer expired or terminated, removing from watchers")
 
-		close(consumer.Channel)
+		consumer.closed.Do(func() {
+			close(consumer.Channel)
+		})
 
 		// Remove watcher
 		m.Lock()
@@ -74,9 +77,33 @@ func (m *Monitor) Update(f FacilityName, message string) {
 		return
 	}
 
+	slog.Info("Sending messages to watchers", "FacilityName", f, "message", message)
+
 	// Send message to all watchers
 	for _, w := range m.Watchers[f] {
 		w.Channel <- message
+	}
+
+}
+
+func (m *Monitor) Clear(f FacilityName) {
+	m.Lock()
+	defer m.Unlock()
+
+	// Silently exit if no known watches for facility
+	if _, e := m.Watchers[f]; !e {
+		return
+	}
+
+	slog.Info("Clearing watches of facility", "FacilityName", f)
+
+	// Transmit one more message before closing channel
+	for _, w := range m.Watchers[f] {
+		w.closed.Do(func() {
+			w.Channel <- "Terminating transmission."
+			close(w.Channel)
+			w.Cancel()
+		})
 	}
 
 }
