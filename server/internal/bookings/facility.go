@@ -150,3 +150,14 @@ func (f *Facility) UpdateBooking(id uint16, deltaHours int) error {
 	slog.Info("Booking has been updated", "OriginalBooking", booking, "NewBooking", newBooking)
 	return nil
 }
+
+func (f *Facility) DeleteBooking(id uint16) {
+	f.Lock()
+	defer f.Unlock()
+	f.clean()
+
+	// Remove bookings that match Id
+	f.Bookings = slices.DeleteFunc(f.Bookings, func(b *Booking) bool {
+		return b.Id == id
+	})
+}

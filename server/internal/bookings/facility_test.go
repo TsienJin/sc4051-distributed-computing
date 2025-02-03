@@ -150,3 +150,35 @@ func TestFacility_UpdateBooking(t *testing.T) {
 	}
 
 }
+
+func TestFacility_DeleteBooking(t *testing.T) {
+
+	currentTime := time.Now()
+
+	b1 := &Booking{
+		Id:    1,
+		Start: currentTime.Add(time.Duration(1) * time.Hour),
+		End:   currentTime.Add(time.Duration(3) * time.Hour),
+	}
+	b2 := &Booking{
+		Id:    2,
+		Start: currentTime.Add(time.Duration(3) * time.Hour),
+		End:   currentTime.Add(time.Duration(4) * time.Hour),
+	}
+
+	f := NewFacility(FacilityName("Testing"))
+
+	_ = f.Book(*b1)
+	_ = f.Book(*b2)
+
+	if len(f.Bookings) != 2 {
+		t.Error("Bookings were not added as expected")
+	}
+
+	f.DeleteBooking(b2.Id)
+
+	if len(f.Bookings) != 1 {
+		t.Error("Booking was not deleted")
+	}
+
+}
