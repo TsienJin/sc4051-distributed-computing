@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"server/internal/env"
 	"server/internal/handle"
 	"server/internal/pools"
 	"server/internal/protocol/proto_defs"
+	"server/internal/vars"
 )
 
 func Serve() {
 
-	staticEnv := env.GetStaticEnv()
+	staticEnv := vars.GetStaticEnv()
 
 	// Determine server's address on given port
 	serverAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", staticEnv.ServerPort))
@@ -43,7 +43,9 @@ func Serve() {
 		dataBuf := pools.PacketBytesPool.Get().([]byte)
 		copy(dataBuf, readBuffer[:n])
 
-		go handle.IncomingPacket(conn, *addr, n, dataBuf)
+		// Each incoming packet is spun onto its own GoRoutine; therefore for each packet, no other
+		// GoRoutine needs to be initiated.
+		go handle.IncomingPacket(conn, addr, n, dataBuf)
 
 		slog.Info(fmt.Sprintf("Received %d bytes from %v\n", n, addr))
 	}
