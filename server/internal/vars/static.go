@@ -1,4 +1,4 @@
-package env
+package vars
 
 import "github.com/caarlos0/env/v11"
 

@@ -2,11 +2,11 @@ package chance
 
 import (
 	"math/rand"
-	"server/internal/env"
+	"server/internal/vars"
 )
 
 func DropPacket() bool {
-	dropRate := env.GetStaticEnv().PacketDropRate
+	dropRate := vars.GetStaticEnv().PacketDropRate
 	if rand.Float32() < dropRate {
 		return true
 	}
