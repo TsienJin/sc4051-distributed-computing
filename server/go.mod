@@ -7,3 +7,5 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 )
+
+require github.com/lmittmann/tint v1.0.7 // indirect
