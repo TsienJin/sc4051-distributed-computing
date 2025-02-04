@@ -119,6 +119,15 @@ func (p *PacketHeader) validate() error {
 	return nil
 }
 
+func (p *PacketHeader) ToDistilled() *PacketHeaderDistilled {
+	return &PacketHeaderDistilled{
+		Version:     p.Version,
+		MessageId:   p.MessageId,
+		MessageType: p.MessageType,
+		RequireAck:  p.Flags.AckRequired(),
+	}
+}
+
 func (p *PacketHeader) MarshalBinary() ([]byte, error) {
 
 	buf := make([]byte, proto_defs.PacketHeaderSize)
