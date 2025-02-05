@@ -1,15 +1,21 @@
 package vars
 
-import "github.com/caarlos0/env/v11"
+import (
+	"github.com/caarlos0/env/v11"
+	"sync"
+)
 
 type StaticEnvStruct struct {
 	ServerPort int `env:"SERVER_PORT" envDefault:"8765"`
 
-	PacketDropRate float32 `env:"PACKET_DROP_RATE" envDefault:"0.10"`
+	PacketDropRate            float32 `env:"PACKET_DROP_RATE" envDefault:"0.10"`          // Rate of which packets are dropped (in and out)
+	PacketReceiveTimeout      int     `env:"PACKET_TIMEOUT_RECEIVE" envDefault:"200"`     // Timeout for packets received in milliseconds
+	MessageAssemblerIntervals int     `env:"MESSAGE_ASSEMBLER_INTERVAL" envDefault:"500"` // Time between runs to request missing packets
 }
 
 var (
 	staticEnv *StaticEnvStruct
+	onceEnv   sync.Once
 )
 
 func LoadStaticEnv() {
@@ -20,9 +26,9 @@ func LoadStaticEnv() {
 }
 
 func GetStaticEnv() *StaticEnvStruct {
-	if staticEnv == nil {
+	onceEnv.Do(func() {
 		LoadStaticEnv()
-	}
+	})
 
 	return staticEnv
 }

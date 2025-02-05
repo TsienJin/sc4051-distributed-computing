@@ -5,7 +5,10 @@ import (
 	"log/slog"
 	"math/bits"
 	"net"
+	"server/internal/network"
 	"server/internal/protocol"
+	"server/internal/protocol/constructors"
+	"server/internal/vars"
 	"sync"
 	"time"
 )
@@ -39,7 +42,61 @@ func NewMessagePartial(
 	}
 }
 
-func (m *MessagePartial) IsComplete() (*protocol.Message, bool) {
+func (m *MessagePartial) GetMissingPackets() []uint8 {
+	m.RLock()
+	defer m.RUnlock()
+
+	// Determine missing packets
+	var missing []uint8
+
+	for i := 0; i < m.Total; i++ {
+		byteIdx := i / 8
+		bitMask := byte(1 << (i % 8))
+
+		if m.Bitmap[byteIdx]&bitMask == 0 {
+			// Packet missing
+			slog.Info("Missing packet", "PacketNumber", i, "MessageId", m.DistilledHeader.MessageId)
+			missing = append(missing, uint8(i))
+		}
+	}
+
+	return missing
+}
+
+func (m *MessagePartial) RequestMissingPackets() {
+	m.RLock()
+	defer m.RUnlock()
+
+	if time.Now().Before(m.LastUpdated.Add(time.Duration(1) * time.Second)) {
+		return
+	}
+
+	if m.IsCompleteCheck() {
+		slog.Warn("Partial message is complete was but RequestMissingPackets() was called", "MessageId", m.DistilledHeader.MessageId)
+		return
+	}
+
+	missingIds := m.GetMissingPackets()
+	if len(missingIds) == 0 {
+		slog.Warn("No missing packets, but RequestMissingPackets() was called", "MessageId", m.DistilledHeader.MessageId)
+	}
+
+	slog.Info("Requesting for missing packets", "PacketIds", missingIds, "MessageId", m.DistilledHeader.MessageId)
+
+	for _, i := range missingIds {
+		p, err := constructors.NewRequestResend(m.DistilledHeader.MessageId, i)
+		if err != nil {
+			slog.Error("Unable to create Request Resend packet", "err", err)
+			continue
+		}
+		if err := network.SendPacket(m.Conn, m.Addr, p); err != nil {
+			slog.Error("Unable to send Request Resend packet", "err", err)
+		}
+	}
+
+}
+
+func (m *MessagePartial) IsCompleteCheck() bool {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -48,7 +105,14 @@ func (m *MessagePartial) IsComplete() (*protocol.Message, bool) {
 		received += bits.OnesCount8(b)
 	}
 
-	if received == m.Total {
+	return received == m.Total
+}
+
+func (m *MessagePartial) IsComplete() (*protocol.Message, bool) {
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.IsCompleteCheck() {
 		slog.Debug("MessagePartial complete!", "MessageId", m.DistilledHeader.MessageId)
 		return protocol.NewMessageFromBytes(m.DistilledHeader, bytes.Join(m.Payloads, nil)), true
 	}
@@ -100,10 +164,33 @@ var messageAssembler *MessageAssembler
 
 func GetMessageAssembler() *MessageAssembler {
 	onceMessageAssembler.Do(func() {
-		messageAssembler = &MessageAssembler{}
+		messageAssembler = &MessageAssembler{
+			Incomplete: make(map[protocol.PacketIdent]*MessagePartial),
+			Complete:   make(map[protocol.PacketIdent]struct{}),
+		}
+
+		// Create an interval to request missing packets on existing incomplete packets
+		t := time.NewTicker(time.Duration(vars.GetStaticEnv().MessageAssemblerIntervals) * time.Millisecond)
+		go func() {
+			defer t.Stop()
+			for range t.C {
+				messageAssembler.RequestMissingPackets()
+			}
+		}()
 	})
 
 	return messageAssembler
+}
+
+func (m *MessageAssembler) RequestMissingPackets() {
+	m.RLock()
+	defer m.RUnlock()
+
+	slog.Info("Requesting missing packets in all message partials")
+	for _, partial := range m.Incomplete {
+		go partial.RequestMissingPackets()
+	}
+	slog.Info("Requesting missing packets done")
 }
 
 func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) {
