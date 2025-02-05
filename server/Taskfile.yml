@@ -13,7 +13,7 @@ tasks:
     desc: "Run tests"
     cmds:
       - echo "Starting server tests"
-      - gotestsum ./internal/... -v --race
+      - gotestsum ./internal/... --race
 
   ### Execute server (locally)
   start:
