@@ -7,8 +7,8 @@ import (
 )
 
 type Message struct {
-	header  *PacketHeaderDistilled
-	payload []byte
+	Header  *PacketHeaderDistilled
+	Payload []byte
 }
 
 func NewMessageFromBytes(
@@ -16,8 +16,8 @@ func NewMessageFromBytes(
 	payload []byte,
 ) *Message {
 	return &Message{
-		header:  header,
-		payload: payload,
+		Header:  header,
+		Payload: payload,
 	}
 }
 
@@ -27,7 +27,7 @@ func NewMessage(
 ) (*Message, error) {
 	data, err := p.MarshalBinary()
 	if err != nil {
-		slog.Error("Unable to marshal payload into bytes", "Payload", p)
+		slog.Error("Unable to marshal Payload into bytes", "Payload", p)
 		return nil, err
 	}
 	return NewMessageFromBytes(header, data), nil
@@ -35,7 +35,7 @@ func NewMessage(
 
 func (m *Message) ToPackets() ([]*Packet, error) {
 
-	totalPayloadSize := len(m.payload)
+	totalPayloadSize := len(m.Payload)
 
 	// Determine number of packets needed to send
 	nPackets := totalPayloadSize / proto_defs.PacketPayloadSizeLimit
@@ -60,17 +60,17 @@ func (m *Message) ToPackets() ([]*Packet, error) {
 		// Get aligned packet data
 		if i == nPackets-1 {
 			data = make([]byte, nBytesRemainder)
-			copy(data, m.payload[i*proto_defs.PacketPayloadSizeLimit:])
+			copy(data, m.Payload[i*proto_defs.PacketPayloadSizeLimit:])
 		} else {
 			data = make([]byte, proto_defs.PacketPayloadSizeLimit)
 			leftLimit := i * proto_defs.PacketPayloadSizeLimit
 			rightLimit := leftLimit + proto_defs.PacketPayloadSizeLimit
-			copy(data, m.payload[leftLimit:rightLimit])
+			copy(data, m.Payload[leftLimit:rightLimit])
 		}
 
 		// Create packet Header
 		packetHeader, err := NewPacketHeader(
-			PacketHeaderFromDistilled(m.header),
+			PacketHeaderFromDistilled(m.Header),
 			PacketHeaderWithFlags(packetFlags),
 			PacketHeaderWithPacketNumber(uint8(i)),
 			PacketHeaderWithTotalPackets(uint8(nPackets)),
