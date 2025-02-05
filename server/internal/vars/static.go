@@ -6,7 +6,8 @@ import (
 )
 
 type StaticEnvStruct struct {
-	ServerPort int `env:"SERVER_PORT" envDefault:"8765"`
+	ServerPort    int `env:"SERVER_PORT" envDefault:"8765"`     // Port exposed for the actual booking application
+	ServerLogPort int `env:"SERVER_LOG_PORT" envDefault:"7777"` // Port exposed for logs to be viewed remotely
 
 	PacketDropRate            float32 `env:"PACKET_DROP_RATE" envDefault:"0.10"`          // Rate of which packets are dropped (in and out)
 	PacketReceiveTimeout      int     `env:"PACKET_TIMEOUT_RECEIVE" envDefault:"200"`     // Timeout for packets received in milliseconds
