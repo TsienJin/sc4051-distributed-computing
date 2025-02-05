@@ -36,6 +36,11 @@ task prod
 ```shell
 task prod:w
 ```
+Alternatively, the following command can be executed using `netcat` to achieve the same outcome. This is useful when the
+environment variables are not set.
+```shell
+nc -v <host> <port>
+```
 
 5. Watch terminal output from server using Docker. This requires SSH access to the host machine.
 ```shell
