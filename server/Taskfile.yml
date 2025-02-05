@@ -2,6 +2,10 @@ version: "3"
 
 tasks:
 
+  ##################################
+  ## Local Entry Points
+  ##################################
+
   ### Run sanity entry point
   sanity:
     desc: "Run sanity entry point"
@@ -12,11 +16,38 @@ tasks:
   test:
     desc: "Run tests"
     cmds:
-      - echo "Starting server tests"
       - gotestsum ./internal/... --race
 
   ### Execute server (locally)
   start:
-    desc: "Starts server"
+    desc: "Starts server (local)"
     cmds:
       - go run ./cmd/server.go
+
+  ### Runs the server over docker (locally)
+  start:docker:
+    desc: "Starts the server on Docker (local)"
+    cmds:
+      - docker compose --file ./Dockercompose.yml --env-file ./Dockercompose.env up --build --force-recreate
+
+  ##################################
+  ## Remote Entry Points
+  ##################################
+
+  prod:
+    desc: "Deploy Docker image to server"
+    dotenv: ['Taskfile.env']
+    cmds:
+      - DOCKER_HOST=ssh://$REMOTE_USER@$REMOTE_HOST docker compose --file ./Dockercompose.yml --env-file ./Dockercompose.env up --build --force-recreate -d
+
+  prod:w:
+    desc: "Watch logs using netcat"
+    dotenv: ['Taskfile.env', 'Dockercompose.env']
+    cmds:
+      - nc -v $REMOTE_HOST $SERVER_LOG_PORT
+
+  prod:w:docker:
+    desc: "Watch logs using Docker"
+    dotenv: ['Taskfile.env']
+    cmds:
+      - DOCKER_HOST=ssh://$REMOTE_USER@$REMOTE_HOST docker compose --file ./Dockercompose.yml --env-file ./Dockercompose.env logs --follow
