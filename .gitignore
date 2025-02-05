@@ -8,6 +8,6 @@
 .DS_Store/
 
 ### Ignore env files
-.env
-.env.*
-!*.sample
+**/*.env
+**/*.env.*
+!**/*.sample
