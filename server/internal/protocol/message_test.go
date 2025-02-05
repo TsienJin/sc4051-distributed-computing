@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"server/internal/protocol/proto_defs"
 	"testing"
 )
@@ -30,5 +31,17 @@ func TestNewMessage(t *testing.T) {
 	// Checks that the first Payload is fully utilised
 	if len(packets[0].Payload) != proto_defs.PacketPayloadSizeLimit {
 		t.Error("did not adhere to packet Payload size limit")
+	}
+
+	if !bytes.Equal(packets[0].Payload, data[:proto_defs.PacketPayloadSizeLimit]) {
+		t.Logf("E: % X", data[:proto_defs.PacketPayloadSizeLimit])
+		t.Logf("R: % X", packets[0].Payload)
+		t.Error("payload does not match")
+	}
+
+	if !bytes.Equal(packets[1].Payload, data[proto_defs.PacketPayloadSizeLimit:]) {
+		t.Logf("E: % X", data[proto_defs.PacketPayloadSizeLimit:])
+		t.Logf("R: % X", packets[1].Payload)
+		t.Error("payload does not match")
 	}
 }
