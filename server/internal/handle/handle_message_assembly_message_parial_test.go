@@ -40,8 +40,13 @@ func TestMessagePartial_IsComplete(t *testing.T) {
 		m.UpsertPacket(p)
 	}
 
-	if _, complete := m.IsComplete(); !complete {
+	message, complete := m.IsComplete()
+	if !complete {
 		t.Error("Message supposed to be complete")
+	}
+
+	if !bytes.Equal(message.Payload, payloadBytesAll) {
+		t.Error("Bytes are supposed to match")
 	}
 
 }
