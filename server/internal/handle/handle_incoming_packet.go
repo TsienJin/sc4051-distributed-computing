@@ -9,6 +9,8 @@ import (
 	"server/internal/pools"
 	"server/internal/protocol"
 	"server/internal/protocol/constructors"
+	"server/internal/protocol/proto_defs"
+	"server/internal/rpc/response"
 )
 
 func IncomingPacket(
@@ -49,10 +51,31 @@ func IncomingPacket(
 		if err := network.SendPacket(conn, addr, ackPacket); err != nil {
 			slog.Error("Unable to send ack packet", "AckPacket", ackPacket)
 		}
+		slog.Info("[IN:ACK] Packet acknowledged")
 	}
 
-	// Pass off to message assembly
-	slog.Info("[IN:HANDOFF] Packet validated and acknowledged, handing off to assembler")
-	AssembleMessageFromPacket(conn, addr, &packet)
+	switch packet.Header.MessageType {
+	case proto_defs.MessageTypeAcknowledge:
+		slog.Info("[IN:SORT] Sent packet acknowledged, removing from history")
+		var ackPayload protocol.AckResendPayload
+		if err := ackPayload.UnmarshalBinary(packet.Payload); err != nil {
+			slog.Error("Unable to unmarshal ack payload", "err", err)
+		}
+		ident := ackPayload.ToPacketIdent()
+		// Packet has been confirmed to be received
+		network.GetSendHistoryInstance().Remove(*ident)
+		// Once first ack of res packet is received, the response is removed
+		response.GetResponseHistoryInstance().RemoveResponse(ident.MessageId)
+		break
+	case proto_defs.MessageTypeRequestResend:
+		slog.Info("[IN:SORT] Requesting for packet resend")
+		RequestResendPacket(conn, addr, &packet)
+		break
+	default:
+		// Pass off to message assembly
+		slog.Info("[IN:HANDOFF] Packet validated and acknowledged, handing off to assembler")
+		AssembleMessageFromPacket(conn, addr, &packet)
+		break
+	}
 
 }
