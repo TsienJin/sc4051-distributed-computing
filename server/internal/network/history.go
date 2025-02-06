@@ -29,6 +29,7 @@ func NewSendHistoryRecord(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) *S
 }
 
 func (s *SendHistoryRecord) ResendPacket() {
+	slog.Info("Resending packet")
 	packet := s.GetPacket()
 	if err := SendPacket(s.Conn, s.Addr, packet); err != nil {
 		slog.Error("Unable to resend historical packet", "err", err)
@@ -76,19 +77,28 @@ func GetSendHistoryInstance() *SendHistory {
 }
 
 func (h *SendHistory) ResendUnAckPackets() {
-	h.RLock()
-	defer h.RUnlock()
+	h.Lock()
+	defer h.Unlock()
 
 	if len(h.messages) == 0 {
 		return
 	}
 
 	slog.Info("Resending unacknowledged packets")
+	historyCutoff := time.Now().Add(time.Duration(vars.GetStaticEnv().PacketTTL) * time.Millisecond)
 	cutOffTime := time.Now().Add(-time.Duration(vars.GetStaticEnv().PacketReceiveTimeout) * time.Millisecond)
 
-	for _, p := range h.messages {
-		// Check if update time has been more than timeout
-		if p.GetTime().Before(cutOffTime) {
+	for ident, p := range h.messages {
+
+		// Check is packet is expired
+		if p.GetTime().Before(historyCutoff) {
+			slog.Info("Deleting expired packet", "Ident", ident)
+			delete(h.messages, ident)
+			continue
+		}
+
+		// Check if update time has been more than timeout and requires an ack
+		if p.GetTime().Before(cutOffTime) && p.Packet.Header.Flags.AckRequired() {
 			go p.ResendPacket()
 		}
 	}
@@ -96,13 +106,9 @@ func (h *SendHistory) ResendUnAckPackets() {
 }
 
 func (h *SendHistory) Append(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) {
-	if p.Header.MessageType == proto_defs.MessageTypeAcknowledge {
-		return
-	}
 
-	// Ignore packets that dont require acks.
-	// Ack not required ==> "I dont care if they receive it" ==> I dont need to keep a history of it.
-	if !p.Header.Flags.AckRequired() {
+	// Do not add ack packets to history
+	if p.Header.MessageType == proto_defs.MessageTypeAcknowledge {
 		return
 	}
 
