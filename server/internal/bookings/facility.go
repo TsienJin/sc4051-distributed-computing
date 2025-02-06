@@ -11,15 +11,17 @@ import (
 type FacilityName string
 
 type Facility struct {
-	sync.Mutex
-	Name     FacilityName
-	Bookings []*Booking
+	sync.RWMutex
+	Name       FacilityName
+	Bookings   []*Booking
+	BookingMap map[uint16]*Booking
 }
 
 func NewFacility(name FacilityName) *Facility {
 	return &Facility{
-		Name:     name,
-		Bookings: []*Booking{},
+		Name:       name,
+		Bookings:   []*Booking{},
+		BookingMap: make(map[uint16]*Booking),
 	}
 }
 
@@ -55,6 +57,7 @@ func (f *Facility) insertBooking(newBooking *Booking) bool {
 
 	// Insert at the correct position
 	f.Bookings = append(f.Bookings[:index], append([]*Booking{newBooking}, f.Bookings[index:]...)...)
+	f.BookingMap[newBooking.Id] = newBooking
 	return true
 }
 
@@ -96,6 +99,14 @@ func (f *Facility) QueryAvailability(nDays int) []byte {
 	}
 
 	return schedule
+}
+
+func (f *Facility) HasId(id uint16) bool {
+	f.RLock()
+	defer f.RUnlock()
+
+	_, exists := f.BookingMap[id]
+	return exists
 }
 
 func (f *Facility) Book(b Booking) error {
@@ -161,6 +172,7 @@ func (f *Facility) DeleteBooking(id uint16) bool {
 	// Remove bookings that match Id
 	f.Bookings = slices.DeleteFunc(f.Bookings, func(b *Booking) bool {
 		if b.Id == id {
+			delete(f.BookingMap, b.Id)
 			deleted = true
 			return true
 		}
