@@ -9,7 +9,7 @@ import (
 
 // Manager is responsible for handling facilities, bookings and monitoring.
 type Manager struct {
-	sync.Mutex
+	sync.RWMutex
 	Facilities map[FacilityName]*Facility
 	monitor    *Monitor
 }
@@ -19,11 +19,12 @@ var (
 	onceManager sync.Once
 )
 
-func NewManager() *Manager {
+func GetManager() *Manager {
 
 	onceManager.Do(func() {
 		manager = &Manager{
 			Facilities: make(map[FacilityName]*Facility),
+			monitor:    GetMonitor(),
 		}
 	})
 
@@ -77,6 +78,9 @@ func (m *Manager) DeleteFacility(name FacilityName) error {
 }
 
 func (m *Manager) NewBooking(n FacilityName, b Booking) error {
+	m.Lock()
+	defer m.Unlock()
+
 	if _, exists := m.Facilities[n]; !exists {
 		slog.Error("Attempted to book a Facility that does not exists!", "FacilityName", n)
 		return errors.New("facility does not exists")
@@ -92,6 +96,9 @@ func (m *Manager) NewBooking(n FacilityName, b Booking) error {
 }
 
 func (m *Manager) UpdateBooking(n FacilityName, bookingId uint16, deltaHours int) error {
+	m.RLock()
+	defer m.RUnlock()
+
 	if _, exists := m.Facilities[n]; !exists {
 		slog.Error("Facility does not exist!", "FacilityName", n)
 		return errors.New("facility does not exist")
@@ -105,7 +112,33 @@ func (m *Manager) UpdateBooking(n FacilityName, bookingId uint16, deltaHours int
 	return nil
 }
 
+func (m *Manager) UpdateBookingFromId(id uint16, deltaHours int) error {
+	m.RLock()
+	defer m.RUnlock()
+
+	updated := false
+
+	for _, f := range m.Facilities {
+		if f.HasId(id) {
+			if err := m.UpdateBooking(f.Name, id, deltaHours); err != nil {
+				return err
+			}
+			updated = true
+		}
+	}
+
+	if !updated {
+		slog.Error("Booking with Id not found!", "BookingId", id)
+		return errors.New("booking with Id not found")
+	}
+
+	return nil
+}
+
 func (m *Manager) DeleteBooking(n FacilityName, bookingId uint16) error {
+	m.RLock()
+	defer m.RUnlock()
+
 	if _, exists := m.Facilities[n]; !exists {
 		slog.Error("Facility does not exist!", "FacilityName", n)
 		return errors.New("facility does not exist")
@@ -117,6 +150,29 @@ func (m *Manager) DeleteBooking(n FacilityName, bookingId uint16) error {
 	} else {
 		slog.Warn("Attempted to delete non-existent booking", "BookingId", bookingId)
 		m.monitor.Update(n, fmt.Sprintf("Attempted to delete non-existant Booking %X from %s.", bookingId, n))
+	}
+
+	return nil
+}
+
+func (m *Manager) DeleteBookingFromId(id uint16) error {
+	m.RLock()
+	defer m.RUnlock()
+
+	deleted := false
+
+	for _, f := range m.Facilities {
+		if f.HasId(id) {
+			if err := m.DeleteBooking(f.Name, id); err != nil {
+				return err
+			}
+			deleted = true
+		}
+	}
+
+	if !deleted {
+		slog.Error("Booking with Id not found!", "BookingId", id)
+		return errors.New("booking with Id not found")
 	}
 
 	return nil
