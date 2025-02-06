@@ -3,8 +3,9 @@ package main
 import (
 	"github.com/lmittmann/tint"
 	"log/slog"
-	"server/internal/monitor"
+	"server/internal/logging"
 	"server/internal/server"
+	"server/internal/vars"
 	"sync"
 	"time"
 )
@@ -12,7 +13,7 @@ import (
 func main() {
 
 	// Create logger
-	w := monitor.NewStderrShim()
+	w := logging.NewStderrShim()
 	slog.SetDefault(slog.New(
 		tint.NewHandler(w, &tint.Options{
 			Level:      slog.LevelDebug,
@@ -24,13 +25,12 @@ func main() {
 	wg.Add(1)
 
 	go func() {
-		go monitor.Serve()
+		go logging.Serve(vars.GetStaticEnv().ServerLogPort)
 		wg.Done()
 	}()
 
 	wg.Wait()
 
 	slog.Info("Starting server!")
-
-	server.Serve()
+	server.Serve(vars.GetStaticEnv().ServerPort)
 }

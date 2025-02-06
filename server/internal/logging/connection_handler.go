@@ -1,4 +1,4 @@
-package monitor
+package logging
 
 import (
 	"net"

@@ -7,15 +7,12 @@ import (
 	"server/internal/handle"
 	"server/internal/pools"
 	"server/internal/protocol/proto_defs"
-	"server/internal/vars"
 )
 
-func Serve() {
-
-	staticEnv := vars.GetStaticEnv()
+func Serve(port int) {
 
 	// Determine server's address on given port
-	serverAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", staticEnv.ServerPort))
+	serverAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		slog.Error("Error resolving server address: ", "err", err)
 		return

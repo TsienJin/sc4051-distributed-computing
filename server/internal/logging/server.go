@@ -1,16 +1,15 @@
-package monitor
+package logging
 
 import (
 	"fmt"
 	"log/slog"
 	"net"
-	"server/internal/vars"
 )
 
-func Serve() {
+func Serve(port int) {
 
 	// Create server
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%v", vars.GetStaticEnv().ServerLogPort))
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		slog.Error("Unable to create logging server", "err", err)
 		panic(err)
