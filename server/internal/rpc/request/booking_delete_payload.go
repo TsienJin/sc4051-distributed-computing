@@ -1,12 +1,14 @@
 package request
 
-import "server/internal/bookings"
+import (
+	"encoding/binary"
+)
 
 type BookingDeletePayload struct {
-	Name bookings.FacilityName
+	Id uint16
 }
 
 func (b *BookingDeletePayload) UnmarshalBinary(data []byte) error {
-	b.Name = bookings.FacilityName(data)
+	b.Id = binary.BigEndian.Uint16(data)
 	return nil
 }
