@@ -54,3 +54,28 @@ task prod:w:docker
 > [!IMPORTANT]
 > Task commands that involve the remote server (i.e. commands 3, 4, 5) require the environment file `Taskfile.env` to
 > be present. Do reference `Taskfile.env.sample` for the necessary environment variables to be defined.
+
+---
+
+## Environment Variables
+
+Environment variables are used to configure a handful of system level behaviours, ranging from port allocation
+to packet drop rate and intervals between clean-ups.
+
+### `Dockercompose.env`
+
+1. `SERVER_PORT` -- Port exposed to UDP for connections.
+2. `SERVER_LOG_PORT` -- Port exposed for watching server logs (and sending client logs).
+3. `PACKET_DROP_RATE` -- [0,1] Rate of which incoming and outgoing packets are dropped.
+4. `PACKET_TIMEOUT_RECEIVE` -- Minimum time before packet is requested again.
+5. `MESSAGE_ASSEMBLER_INTERVAL` -- Time interval (in milliseconds) that partial messages are checked for missing packets.
+6. `RESPONSE_TTL` -- Time (in milliseconds) that sent responses are kept on the server.
+7. `RESPONSE_INTERVAL` -- Time (in milliseconds) that the system checks for "expired" responses.
+
+### `Taskfile.env`
+
+1. `REMOTE_HOST` -- Server address, used for SSH etc.
+2. `REMOTE_USER` -- Server user, used for SSH when building to remote server using Docker compose.
+
+---
+
