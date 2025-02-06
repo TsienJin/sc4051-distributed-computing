@@ -26,3 +26,11 @@ func (b *BookingMakePayload) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+func (b *BookingMakePayload) GetBooking() (bookings.Booking, error) {
+	return bookings.NewBooking(
+		bookings.BookingWithRandomId(),
+		bookings.BookingWithStartTime(b.Start),
+		bookings.BookingWithEndTime(b.End),
+	)
+}
