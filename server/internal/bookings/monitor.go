@@ -10,6 +10,7 @@ import (
 
 type MonitorConsumer struct {
 	Channel chan string
+	Ctx     context.Context
 	Cancel  context.CancelFunc
 	closed  sync.Once
 }
@@ -24,7 +25,7 @@ var (
 	onceMonitor sync.Once
 )
 
-func NewMonitor() *Monitor {
+func GetMonitor() *Monitor {
 	onceMonitor.Do(func() {
 		monitor = &Monitor{
 			Watchers: make(map[FacilityName][]*MonitorConsumer),
@@ -40,6 +41,7 @@ func (m *Monitor) Watch(f FacilityName, ttl time.Duration) *MonitorConsumer {
 
 	consumer := &MonitorConsumer{
 		Channel: updateChannel,
+		Ctx:     ctx,
 		Cancel:  cancel,
 	}
 
