@@ -27,6 +27,7 @@ func Serve() {
 				continue
 			}
 			slog.Info("Accepted new logging connection")
+			go HandleClientMessages(conn.(*net.TCPConn))
 			handler.AddClient(conn.(*net.TCPConn))
 		}
 	}()
