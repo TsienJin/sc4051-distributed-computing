@@ -36,6 +36,12 @@ func WithStatusCode(s StatusCode) Option {
 	}
 }
 
+func WithPayloadMessage(s string) Option {
+	return func(r *Response) {
+		r.Payload = []byte(s)
+	}
+}
+
 func WithPayload(p encoding.BinaryMarshaler) Option {
 	return func(r *Response) {
 		data, err := p.MarshalBinary()
@@ -43,6 +49,12 @@ func WithPayload(p encoding.BinaryMarshaler) Option {
 			slog.Error("Unable to marshal payload into binary", "Payload", p)
 			return
 		}
+		r.Payload = data
+	}
+}
+
+func WithPayloadBytes(data []byte) Option {
+	return func(r *Response) {
 		r.Payload = data
 	}
 }
