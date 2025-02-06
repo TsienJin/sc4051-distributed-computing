@@ -186,6 +186,10 @@ func (m *MessageAssembler) RequestMissingPackets() {
 	m.RLock()
 	defer m.RUnlock()
 
+	if len(m.Incomplete) == 0 {
+		return
+	}
+
 	slog.Info("Requesting missing packets in all message partials")
 	for _, partial := range m.Incomplete {
 		go partial.RequestMissingPackets()
