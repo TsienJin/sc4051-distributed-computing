@@ -21,6 +21,12 @@ func IncomingPacket(
 ) {
 	defer pools.PacketBytesPool.Put(data)
 
+	// Check that the packet is big enough to have a header and checksum
+	if nBytes < proto_defs.PacketHeaderSize+proto_defs.PacketChecksumSize {
+		slog.Warn("Received a packet that is too small to be considered a packet, dropping")
+		return
+	}
+
 	// Drop Chance
 	if chance.DropPacket() {
 		slog.Warn(fmt.Sprintf("[IN:DROP] %d from %s", nBytes, addr.String()))
