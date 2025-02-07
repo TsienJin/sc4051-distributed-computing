@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"server/internal/vars"
+	"strings"
 	"sync"
 )
 
@@ -25,7 +26,7 @@ func NewPayload(text string) *Payload {
 	cleanText := stripAnsiCodes(text) // Remove ANSI codes
 	return &Payload{
 		Username: "🚀 SC4051 Alert Bot",
-		Text:     fmt.Sprintf("```\n%s\n```", cleanText), // Format as code block
+		Text:     fmt.Sprintf("```\n%s\n```", strings.TrimSuffix(cleanText, "\n")), // Format as code block
 	}
 }
 
