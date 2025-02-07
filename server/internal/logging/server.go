@@ -33,6 +33,7 @@ func Serve(port int) {
 
 	for m := range GetMessageQueue() {
 		handler.SendMessage(m)
+		SendToMatterMost(m)
 	}
 
 }
