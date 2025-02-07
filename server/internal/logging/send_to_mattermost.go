@@ -13,6 +13,7 @@ import (
 
 type Payload struct {
 	Username string `json:"username"`
+	IconURL  string `json:"icon_url"`
 	Text     string `json:"text"`
 }
 
@@ -26,6 +27,7 @@ func NewPayload(text string) *Payload {
 	cleanText := stripAnsiCodes(text) // Remove ANSI codes
 	return &Payload{
 		Username: "🚀 SC4051 Alert Bot",
+		IconURL:  "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Caleb&randomizeIds=false",
 		Text:     fmt.Sprintf("```\n%s\n```", strings.TrimSuffix(cleanText, "\n")), // Format as code block
 	}
 }
