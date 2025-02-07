@@ -15,6 +15,8 @@ type StaticEnvStruct struct {
 	MessageAssemblerIntervals int     `env:"MESSAGE_ASSEMBLER_INTERVAL" envDefault:"500"` // Time between runs to request missing packets
 	ResponseTTL               int     `env:"RESPONSE_TTL" envDefault:"5000"`              // Maximum time to keep messages in history
 	ResponseIntervals         int     `env:"RESPONSE_INTERVAL" envDefault:"1000"`         // Time between runs to check for expired responses
+
+	MatterMostWebhook string `env:"MATTERMOST_WEBHOOK" envDefault:""`
 }
 
 var (
