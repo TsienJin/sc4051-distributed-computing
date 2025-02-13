@@ -11,3 +11,6 @@
 **/*.env
 **/*.env.*
 !**/*.sample
+
+### Ignore output
+client/java/target/
