@@ -3,6 +3,7 @@ package protocol
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"server/internal/protocol/proto_defs"
 )
 
@@ -74,6 +75,11 @@ func (p *Packet) UnmarshalBinary(data []byte) error {
 
 	// Handle checksum
 	p.Checksum = GetChecksumFromChecksumBytes(data[proto_defs.PacketHeaderSize+p.Header.PayloadLength : proto_defs.PacketHeaderSize+p.Header.PayloadLength+proto_defs.PacketChecksumSize])
+
+	// Validate checksum
+	if !ValidateChecksum(data[:proto_defs.PacketHeaderSize+p.Header.PayloadLength], p.Checksum) {
+		return errors.New("checksum does not match payload")
+	}
 
 	return nil
 }

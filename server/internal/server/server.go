@@ -9,21 +9,8 @@ import (
 	"server/internal/protocol/proto_defs"
 )
 
-func Serve(port int) {
+func serveOnConn(conn *net.UDPConn) {
 
-	// Determine server's address on given port
-	serverAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
-	if err != nil {
-		slog.Error("Error resolving server address: ", "err", err)
-		return
-	}
-
-	// Create UDP listener
-	conn, err := net.ListenUDP("udp", serverAddr)
-	if err != nil {
-		slog.Error("Error starting server: ", "err", err)
-		return
-	}
 	defer conn.Close()
 	slog.Info(fmt.Sprintf("UDP Server listening on %s\n", conn.LocalAddr().String()))
 
@@ -47,4 +34,46 @@ func Serve(port int) {
 		slog.Info(fmt.Sprintf("Received %d bytes from %v\n", n, addr))
 	}
 
+}
+
+func Serve(port int) {
+
+	// Determine server's address on given port
+	serverAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
+	if err != nil {
+		slog.Error("Error resolving server address: ", "err", err)
+		return
+	}
+
+	// Create UDP listener
+	conn, err := net.ListenUDP("udp", serverAddr)
+	if err != nil {
+		slog.Error("Error starting server: ", "err", err)
+		return
+	}
+	serveOnConn(conn)
+
+}
+
+func ServeRandomPort() (int, error) {
+	// Resolve a UDP address with port 0 (OS assigns a free port)
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:0")
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	// Listen on a random available port
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to listen on a UDP port: %w", err)
+	}
+
+	// Extract the assigned port
+	port := conn.LocalAddr().(*net.UDPAddr).Port
+	slog.Info(fmt.Sprintf("Assigned random UDP port: %d", port))
+
+	// Start serving packets
+	go serveOnConn(conn)
+
+	return port, nil
 }

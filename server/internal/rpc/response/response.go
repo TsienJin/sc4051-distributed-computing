@@ -76,3 +76,17 @@ func (r *Response) MarshalBinary() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+func (r *Response) UnmarshalBinary(data []byte) error {
+
+	// Read OriginalMessageId
+	r.OriginalMessageId = proto_defs.MessageId(data[:16])
+
+	// Read StatusCode
+	r.StatusCode = StatusCode(binary.BigEndian.Uint16(data[16:18]))
+
+	// Read remaining bytes into Payload
+	r.Payload = data[18:]
+
+	return nil
+}

@@ -9,7 +9,7 @@ type StaticEnvStruct struct {
 	ServerPort    int `env:"SERVER_PORT" envDefault:"8765"`     // Port exposed for the actual booking application
 	ServerLogPort int `env:"SERVER_LOG_PORT" envDefault:"7777"` // Port exposed for logs to be viewed remotely
 
-	PacketDropRate            float32 `env:"PACKET_DROP_RATE" envDefault:"0.10"`          // Rate of which packets are dropped (in and out)
+	PacketDropRate            float32 `env:"PACKET_DROP_RATE" envDefault:"0.00"`          // Rate of which packets are dropped (in and out)
 	PacketReceiveTimeout      int     `env:"PACKET_TIMEOUT_RECEIVE" envDefault:"200"`     // Timeout for packets received in milliseconds
 	PacketTTL                 int     `env:"PACKET_TTL" envDefault:"2000"`                // Maximum time to keep packets in history
 	MessageAssemblerIntervals int     `env:"MESSAGE_ASSEMBLER_INTERVAL" envDefault:"500"` // Time between runs to request missing packets
