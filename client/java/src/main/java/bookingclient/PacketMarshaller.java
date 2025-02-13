@@ -8,7 +8,7 @@ import java.util.zip.CRC32;
 public class PacketMarshaller {
 
     // Method to construct the packet
-    public byte[] marshalPacket(byte messageType, byte packetNumber, byte totalPackets, boolean ackRequired, boolean fragment, byte methodIdentifier,byte[] payload) {
+    public byte[] marshalPacket(byte messageType, byte packetNumber, byte totalPackets, boolean ackRequired, boolean fragment, byte[] payload) {
         // 1. Protocol version (8 bits)
         byte protocolVersion = 0x01;
 
@@ -36,13 +36,12 @@ public class PacketMarshaller {
         }
 
         // 7. Payload Length (16 bits, size of the payload)
-        short payloadLength = (short) (payload.length + 1);  // +1 byte for Method Identifier (8 bits)
-        byte methodIdentifierByte = methodIdentifier;
+        short payloadLength = (short) (payload.length);  // +1 byte for Method Identifier (8 bits)
         // 8. Checksum (32 bits, CRC32 for simplicity)
-        byte[] checksum = calculateChecksum(protocolVersion, messageIdBytes, msgType, packetNo, totalPacketsByte, flags, payloadLength,methodIdentifierByte, payload);
+        byte[] checksum = calculateChecksum(protocolVersion, messageIdBytes, msgType, packetNo, totalPacketsByte, flags, payloadLength, payload);
 
         // Allocate a ByteBuffer with sufficient space for all the fields
-        ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + 1 + payload.length + 4);
+        ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + payload.length + 4);
 
         // Fill the buffer with the data
         buffer.put(protocolVersion);  // Protocol version
@@ -52,7 +51,6 @@ public class PacketMarshaller {
         buffer.put(totalPacketsByte); // Total Packets
         buffer.put(flags);            // Flags
         buffer.putShort(payloadLength);  // Payload length (including Method Identifier)
-        buffer.put(methodIdentifierByte);        // Method Identifier (Create Facility)
         buffer.put(payload);          // Payload (Facility Name)
         buffer.put(checksum);         // Checksum
 
@@ -69,9 +67,9 @@ public class PacketMarshaller {
     }
 
     // Calculate checksum (simple CRC32 for the whole packet)
-    private byte[] calculateChecksum(byte protocolVersion, byte[] messageIdBytes, byte msgType, byte packetNo, byte totalPackets, byte flags, short payloadLength,byte methodIdentifierByte, byte[] payload) {
+    private byte[] calculateChecksum(byte protocolVersion, byte[] messageIdBytes, byte msgType, byte packetNo, byte totalPackets, byte flags, short payloadLength, byte[] payload) {
         // Combine all parts of the packet (excluding checksum itself) into a single byte array
-        ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + 1 + payload.length);
+        ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + payload.length);
         buffer.put(protocolVersion); //1
         buffer.put(messageIdBytes); //16
         buffer.put(msgType); //1
@@ -79,7 +77,6 @@ public class PacketMarshaller {
         buffer.put(totalPackets); //1
         buffer.put(flags); //1
         buffer.putShort(payloadLength); // 2
-        buffer.put(methodIdentifierByte);  // Add Method Identifier (e.g., Create Facility) //1
         buffer.put(payload); //payload.length
 
         // Use CRC32 for checksum calculation
@@ -91,6 +88,47 @@ public class PacketMarshaller {
         ByteBuffer checksumBuffer = ByteBuffer.allocate(4);
         checksumBuffer.putInt((int) checksumValue);
         return checksumBuffer.array();
+    }
+    public byte[] unmarshalResponse(byte[] response) {
+
+        ByteBuffer buffer = ByteBuffer.wrap(response);
+        if(Debugger.isEnabled()){
+            System.out.println("Received response: " + bytesToHex(response));
+            System.out.println(buffer.remaining());
+        }
+        byte[] messageIdBytes = new byte[16];
+        byte protocolVersion = buffer.get();
+        buffer.get(messageIdBytes);
+        byte msgType = buffer.get();
+        byte packetNo = buffer.get();
+        byte totalPackets = buffer.get();
+        byte flags = buffer.get();
+        short payloadLength = buffer.getShort();
+        byte[] payload = new byte[payloadLength];
+        buffer.get(payload);
+        byte[] checksum = new byte[4];
+        buffer.get(checksum);
+        if(isChecksumValid(
+                calculateChecksum(protocolVersion, messageIdBytes, msgType, packetNo, totalPackets, flags, payloadLength, payload),
+                checksum)){
+            System.out.println("Checksum is valid");
+        }
+
+        System.out.println("Payload String: " + new String(payload, StandardCharsets.UTF_8));
+
+        if (Debugger.isEnabled()){
+            System.out.println("Message ID: " + fromByteArray(messageIdBytes));
+            System.out.println("Protocol Version: " + protocolVersion);
+            System.out.println("Message Type: " + msgType);
+            System.out.println("Packet Number: " + packetNo);
+            System.out.println("Total Packets: " + totalPackets);
+            System.out.println("Flags: " + flags);
+            System.out.println("Payload Length: " + payloadLength);
+            System.out.println("Payload: " + bytesToHex(payload));
+            System.out.println("Checksum: " + bytesToHex(checksum));
+        }
+
+        return response;
     }
     // Verify checksum
     private boolean isChecksumValid(byte[] calculatedChecksum, byte[] receivedChecksum) {
@@ -117,14 +155,35 @@ public class PacketMarshaller {
     public byte[] marshalCreateFacilityRequest(String facility) {
         // Facility Name as the payload
         byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+        byte methodIdentifier = 0x01;
+        ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length);
+        buffer.put(methodIdentifier);
+        buffer.put(facilityBytes);
+        facilityBytes = buffer.array();
         return marshalPacket(
                 (byte) 0x02,  // Message Type (Request)
                 (byte) 0x00,  // Packet Number (0)
                 (byte) 0x01,  // Total Packets (1)
                 true,          // Ack Required
                 false,         // Fragment
-                (byte) 0x01,
-                facilityBytes  // Payload (Facility Name)
+                facilityBytes  // 0x01, Payload (Facility Name)
+        );
+    }
+    public byte[] marshalDeleteFacilityRequest(String facility) {
+        // Facility Name as the payload
+        byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+        byte methodIdentifier = 0x04;
+        ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length);
+        buffer.put(methodIdentifier);
+        buffer.put(facilityBytes);
+        facilityBytes = buffer.array();
+        return marshalPacket(
+                (byte) 0x02,  // Message Type (Request)
+                (byte) 0x00,  // Packet Number (0)
+                (byte) 0x01,  // Total Packets (1)
+                true,          // Ack Required
+                false,         // Fragment
+                facilityBytes  // 0x01, Payload (Facility Name)
         );
     }
 }
