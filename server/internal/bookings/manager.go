@@ -35,6 +35,10 @@ func (m *Manager) NewFacility(name FacilityName) error {
 	m.Lock()
 	defer m.Unlock()
 
+	if name == "" {
+		return errors.New("facility name cannot be empty")
+	}
+
 	if _, exists := m.Facilities[name]; exists {
 		slog.Error("Attempted to create a Facility that already exists!", "Facility", name)
 		return errors.New("facility already exists")
