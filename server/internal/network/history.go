@@ -84,7 +84,7 @@ func (h *SendHistory) ResendUnAckPackets() {
 		return
 	}
 
-	slog.Info("Resending unacknowledged packets")
+	slog.Debug("Resending unacknowledged packets")
 	historyCutoff := time.Now().Add(time.Duration(vars.GetStaticEnv().PacketTTL) * time.Millisecond)
 	cutOffTime := time.Now().Add(-time.Duration(vars.GetStaticEnv().PacketReceiveTimeout) * time.Millisecond)
 
