@@ -49,7 +49,7 @@ func Sort(c *net.UDPConn, a *net.UDPAddr, m *protocol.Message) {
 		FacilityMonitor(c, a, m)
 		break
 	case request.MethodIdentifierFacilityDelete:
-		FacilityMonitor(c, a, m)
+		FacilityDelete(c, a, m)
 		break
 	case request.MethodIdentifierBookingMake:
 		BookingMake(c, a, m)
