@@ -2,6 +2,7 @@ package handle
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"math/bits"
 	"net"
@@ -131,7 +132,14 @@ func (m *MessagePartial) GetPacketBitmapPosition(p *protocol.Packet) (int, byte)
 }
 
 // UpsertPacket checks if the packet has already been added to MessagePartial.
-func (m *MessagePartial) UpsertPacket(p *protocol.Packet) {
+func (m *MessagePartial) UpsertPacket(p *protocol.Packet) error {
+
+	// Ensure that the packet number does not exceed range
+	if p.Header.PacketNumber >= uint8(m.Total) {
+		slog.Error("Packet number does exceeds total number of packets", "PacketNumber", p.Header.PacketNumber, "Total", m.Total)
+		return errors.New("packet number exceeds total number of packets")
+	}
+
 	byteIdx, mask := m.GetPacketBitmapPosition(p)
 
 	m.Lock()
@@ -139,7 +147,7 @@ func (m *MessagePartial) UpsertPacket(p *protocol.Packet) {
 
 	if m.Bitmap[byteIdx]&mask == 1 {
 		slog.Info("Packet already added to partial", "MessageId", p.Header.MessageId, "PacketNumber", p.Header.PacketNumber)
-		return
+		return nil
 	}
 
 	if m.DistilledHeader == nil {
@@ -151,6 +159,7 @@ func (m *MessagePartial) UpsertPacket(p *protocol.Packet) {
 	m.Payloads[p.Header.PacketNumber] = p.Payload
 	m.LastUpdated = time.Now()
 	slog.Info("Added new packet to partial message", "MessageId", m.DistilledHeader.MessageId)
+	return nil
 }
 
 type MessageAssembler struct {
@@ -212,10 +221,16 @@ func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPA
 
 	// Add packet to MessagePartial
 	if mp, exists := m.Incomplete[ident]; exists {
-		mp.UpsertPacket(p)
+		slog.Info("Upsert packet that already exists", "PacketIdent", ident)
+		if err := mp.UpsertPacket(p); err != nil {
+			return
+		}
 	} else {
+		slog.Info("Setting new partial", "PacketIdent", ident)
 		m.Incomplete[ident] = NewMessagePartial(c, a, int(p.Header.TotalPackets))
-		m.Incomplete[ident].UpsertPacket(p)
+		if err := m.Incomplete[ident].UpsertPacket(p); err != nil {
+			return
+		}
 	}
 
 	if message, completed := m.Incomplete[ident].IsComplete(); completed {
