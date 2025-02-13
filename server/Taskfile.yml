@@ -18,6 +18,11 @@ tasks:
     cmds:
       - gotestsum ./internal/... --race
 
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - gotestsum ./tests/... --race
+
   ### Execute server (locally)
   start:
     desc: "Starts server (local)"
