@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"server/internal/protocol/proto_defs"
 )
 
@@ -15,8 +16,12 @@ func (a *AckResendPayload) MarshalBinary() ([]byte, error) {
 }
 
 func (a *AckResendPayload) UnmarshalBinary(data []byte) error {
-	a.Id = proto_defs.MessageId(data[0:4])
-	a.PacketNumber = data[4]
+	if len(data) < 17 {
+		return fmt.Errorf("AckResendPayload too short to be valid: % X", data)
+	}
+
+	a.Id = proto_defs.MessageId(data[0:16])
+	a.PacketNumber = data[16]
 	return nil
 }
 

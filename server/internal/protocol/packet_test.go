@@ -30,10 +30,18 @@ func TestPacket_MarshalUnmarshalBinary(t *testing.T) {
 	packetBytes, _ := packet.MarshalBinary()
 
 	regenPacket := &Packet{}
-	_ = regenPacket.UnmarshalBinary(packetBytes)
+	if err := regenPacket.UnmarshalBinary(packetBytes); err != nil {
+		t.Error(err)
+	}
 
 	if !cmp.Equal(regenPacket, packet) {
 		t.Error("Packets do not match after marshalling/unmarshalling")
+	}
+
+	packetBytes[len(packetBytes)-1]++
+	var faultyPacket Packet
+	if err := faultyPacket.UnmarshalBinary(packetBytes); err == nil {
+		t.Error("Expected error due to modified checksum")
 	}
 
 }
