@@ -114,7 +114,7 @@ func (m *MessagePartial) IsComplete() (*protocol.Message, bool) {
 	defer m.RUnlock()
 
 	if m.IsCompleteCheck() {
-		slog.Debug("MessagePartial complete!", "MessageId", m.DistilledHeader.MessageId)
+		slog.Info("MessagePartial complete!", "MessageId", m.DistilledHeader.MessageId)
 		return protocol.NewMessageFromBytes(m.DistilledHeader, bytes.Join(m.Payloads, nil)), true
 	}
 
