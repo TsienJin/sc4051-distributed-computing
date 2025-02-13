@@ -13,7 +13,7 @@ func BookingDelete(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 
 	// Get message payload unmarshalled
 	var p request.BookingDeletePayload
-	if err := p.UnmarshalBinary(message.Payload); err != nil {
+	if err := p.UnmarshalBinary(message.Payload[1:]); err != nil {
 		slog.Error("Unable to unmarshall BookingDeletePayload", "err", err)
 		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusInternalServerError, err.Error()))
 		return

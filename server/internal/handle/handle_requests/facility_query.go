@@ -13,7 +13,7 @@ func FacilityQuery(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 
 	// Unmarshal into payload
 	var p request.FacilityQueryPayload
-	if err := p.UnmarshalBinary(message.Payload); err != nil {
+	if err := p.UnmarshalBinary(message.Payload[1:]); err != nil {
 		slog.Error("Unable to unmarshal FacilityQueryPayload", "err", err)
 		return
 	}
