@@ -8,7 +8,9 @@ import (
 	"net"
 	"reflect"
 	"server/internal/protocol"
+	"server/internal/protocol/constructors"
 	"server/internal/protocol/proto_defs"
+	"server/internal/rpc/response"
 	"server/tests"
 	"sync"
 	"time"
@@ -20,12 +22,12 @@ type Client struct {
 	logger *slog.Logger
 	name   string
 
-	history      *sendManager
+	manager      *sendManager
 	targetServer *net.UDPAddr
 	conn         *net.UDPConn
 
 	responseBytes chan [proto_defs.PacketSizeLimit]byte // This chan is used internally for message passing
-	Responses     chan *protocol.Packet                 // Exposed to process incoming messages
+	Responses     chan *response.Response               // Exposed to process incoming messages
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -68,7 +70,7 @@ func WithTimeout(t time.Duration) NewClientOpt {
 func NewClient(opts ...NewClientOpt) (*Client, error) {
 	c := &Client{
 		responseBytes: make(chan [proto_defs.PacketSizeLimit]byte, 8),
-		Responses:     make(chan *protocol.Packet, 8),
+		Responses:     make(chan *response.Response, 8),
 	}
 	c.Ctx, c.Cancel = context.WithCancel(context.Background())
 	c.logger = tests.NewNamedTestLogger(c.name)
@@ -76,7 +78,7 @@ func NewClient(opts ...NewClientOpt) (*Client, error) {
 		o(c)
 	}
 
-	c.history = newSendHistory()
+	c.manager = newSendHistory()
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
@@ -163,6 +165,20 @@ func (c *Client) handleIncomingPacket() {
 				return
 			}
 
+			// Send ack if needed
+			if p.Header.Flags.AckRequired() {
+				ackPacket, err := constructors.NewAck(p.Header.MessageId, p.Header.PacketNumber)
+				if err != nil {
+					c.logger.Error("Unable to construct Ack", "err", err)
+					continue
+				}
+				if err := c.SendPacket(ackPacket); err != nil {
+					c.logger.Error("Unable to send ack packet", "err", err)
+					continue
+				}
+			}
+
+			// Handle various message types
 			switch p.Header.MessageType {
 
 			case proto_defs.MessageTypeAcknowledge:
@@ -174,7 +190,7 @@ func (c *Client) handleIncomingPacket() {
 				// Remove from history
 				ident := ackPayload.ToPacketIdent()
 				c.logger.Info("Ack received for packet, removing from history", "ident", ident)
-				c.history.clear(ident)
+				c.manager.clear(ident)
 
 			case proto_defs.MessageTypeRequestResend:
 				var resendPayload protocol.AckResendPayload
@@ -185,7 +201,7 @@ func (c *Client) handleIncomingPacket() {
 				// Resend from history
 				ident := resendPayload.ToPacketIdent()
 				c.logger.Info("Resend request received", "ReqIdent", ident)
-				packet, err := c.history.get(ident)
+				packet, err := c.manager.get(ident)
 				if err != nil {
 					c.logger.Error("Unable to retrieve packet from history", "err", err)
 					continue
@@ -196,7 +212,14 @@ func (c *Client) handleIncomingPacket() {
 				}
 			case proto_defs.MessageTypeResponse:
 				c.logger.Info("Received response from server")
-				c.Responses <- &p
+
+				// Unmarshal into response payload
+				var res response.Response
+				if err := res.UnmarshalBinary(p.Payload); err != nil {
+					c.logger.Error("Unable to unmarshal packet payload into response", "err", err)
+					continue
+				}
+				c.Responses <- &res
 				continue
 			default: // Unrecognised message types + requests
 				c.logger.Warn("Unsupported packet type", "type", p.Header.MessageType)
@@ -212,14 +235,14 @@ func (c *Client) handleIncomingPacket() {
 func (c *Client) Close() {
 	c.logger.Debug("Closing client")
 	c.Cancel()
-	c.history.close()
+	c.manager.close()
 	c.conn.Close()
 	c.wg.Wait()
 }
 
 func (c *Client) SendPacket(p *protocol.Packet) error {
 	c.logger.Info("Sending packet", "packet", p)
-	return c.history.send(c.conn, c.targetServer, p)
+	return c.manager.send(c.conn, c.targetServer, p)
 }
 
 func (c *Client) SendPackets(packets []*protocol.Packet) error {
