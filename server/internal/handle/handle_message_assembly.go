@@ -199,11 +199,11 @@ func (m *MessageAssembler) RequestMissingPackets() {
 		return
 	}
 
-	slog.Info("Requesting missing packets in all message partials")
+	slog.Debug("Requesting missing packets in all message partials")
 	for _, partial := range m.Incomplete {
 		go partial.RequestMissingPackets()
 	}
-	slog.Info("Requesting missing packets done")
+	slog.Debug("Requesting missing packets done")
 }
 
 func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) {
