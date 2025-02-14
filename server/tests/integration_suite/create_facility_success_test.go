@@ -69,13 +69,7 @@ LOOP:
 		case <-c.Ctx.Done():
 			break LOOP
 		case r := <-c.Responses: // we should only expect 1 response (ok or error)
-
-			var res response.Response
-			if err := res.UnmarshalBinary(r.Payload); err != nil {
-				t.Error(err)
-				return
-			}
-			ok = res.StatusCode == response.StatusOk
+			ok = r.StatusCode == response.StatusOk
 			break LOOP
 		default:
 			continue
