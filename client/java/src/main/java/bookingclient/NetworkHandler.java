@@ -24,18 +24,16 @@ public class NetworkHandler {
     }
 
     public byte[] sendPacketWithAck(byte[] packet) throws IOException {
-
+        //This function sends a packet and waits for an acknowledgement and response.
         DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
         byte[] ackBuffer = new byte[1024];
         DatagramPacket ackPacket = new DatagramPacket(ackBuffer, ackBuffer.length);
-
         int retries = 0;
         while (retries < MAX_RETRIES) {
             try {
                 System.out.println(bytesToHex(DatagramPacket.getData()));
                 socket.send(DatagramPacket);
                 socket.receive(ackPacket);
-                System.out.println("first time" + bytesToHex(ackPacket.getData()));
                 socket.receive(ackPacket);
                 System.out.println("second time" + bytesToHex(ackPacket.getData()));
                 return ackPacket.getData();
@@ -59,6 +57,23 @@ public class NetworkHandler {
             hexString.append(String.format("%02X", b));
         }
         return hexString.toString();
+    }
+    private void backoffDelay(int retryCount) {
+        //Helper function to introduce backoffDelay to simulate server down time
+        try {
+            // Base delay: 100ms multiplied by 2^retryCount.
+            long baseDelay = 100 * (long) Math.pow(2, retryCount);
+
+            // Random factor between 0.8 and 1.2.
+            double randomFactor = 0.8 + Math.random() * 0.4;
+
+            // Apply the random factor to the base delay.
+            long delay = (long) (baseDelay * randomFactor);
+            Debugger.log("Delaying for " + delay + "ms before retrying...");
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
 
