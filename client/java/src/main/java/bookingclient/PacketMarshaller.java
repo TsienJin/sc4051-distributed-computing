@@ -113,7 +113,7 @@ public class PacketMarshaller {
                 checksum)){
             System.out.println("Checksum is valid");
         }
-
+        System.out.println("Payload bytes" + bytesToHex(payload));
         System.out.println("Payload String: " + new String(payload, StandardCharsets.UTF_8));
 
         if (Debugger.isEnabled()){

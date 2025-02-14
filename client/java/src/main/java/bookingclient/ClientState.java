@@ -88,9 +88,6 @@ class DeleteFacilityState implements ClientState{
         // After processing, return to MenuState
         client.setState(new MenuState());
         client.handleRequest();
-
-        client.setState(new MenuState());
-        client.handleRequest();
     }
 }
 
