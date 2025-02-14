@@ -20,7 +20,7 @@ type Client struct {
 	logger *slog.Logger
 	name   string
 
-	history      *sendHistory
+	history      *sendManager
 	targetServer *net.UDPAddr
 	conn         *net.UDPConn
 
@@ -173,7 +173,7 @@ func (c *Client) handleIncomingPacket() {
 				}
 				// Remove from history
 				ident := ackPayload.ToPacketIdent()
-				c.logger.Debug("Ack received for packet, removing from history", "ident", ident)
+				c.logger.Info("Ack received for packet, removing from history", "ident", ident)
 				c.history.clear(ident)
 
 			case proto_defs.MessageTypeRequestResend:
@@ -184,7 +184,7 @@ func (c *Client) handleIncomingPacket() {
 				}
 				// Resend from history
 				ident := resendPayload.ToPacketIdent()
-				c.logger.Debug("Resend request received", "ReqIdent", ident)
+				c.logger.Info("Resend request received", "ReqIdent", ident)
 				packet, err := c.history.get(ident)
 				if err != nil {
 					c.logger.Error("Unable to retrieve packet from history", "err", err)
@@ -195,6 +195,7 @@ func (c *Client) handleIncomingPacket() {
 					continue
 				}
 			case proto_defs.MessageTypeResponse:
+				c.logger.Info("Received response from server")
 				c.Responses <- &p
 				continue
 			default: // Unrecognised message types + requests
@@ -211,26 +212,23 @@ func (c *Client) handleIncomingPacket() {
 func (c *Client) Close() {
 	c.logger.Debug("Closing client")
 	c.Cancel()
+	c.history.close()
 	c.conn.Close()
 	c.wg.Wait()
 }
 
 func (c *Client) SendPacket(p *protocol.Packet) error {
-
 	c.logger.Info("Sending packet", "packet", p)
+	return c.history.send(c.conn, c.targetServer, p)
+}
 
-	b, err := p.MarshalBinary()
-	if err != nil {
-		c.logger.Error("Unable to marshal packet binary", "err", err)
-		return err
+func (c *Client) SendPackets(packets []*protocol.Packet) error {
+
+	for _, p := range packets {
+		if err := c.SendPacket(p); err != nil {
+			return err
+		}
 	}
-
-	if _, err := c.conn.WriteToUDP(b, c.targetServer); err != nil {
-		c.logger.Error("Unable to send packet to target", "err", err)
-		return err
-	}
-
-	c.history.set(p)
 
 	return nil
 }

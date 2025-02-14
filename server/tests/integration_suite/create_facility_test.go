@@ -22,7 +22,7 @@ func TestCreateFacility_successful(t *testing.T) {
 	c, err := client.NewClient(
 		client.WithClientName("TestCreateFacility_successful"),
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
-		client.WithTimeout(time.Duration(2)*time.Second),
+		client.WithTimeout(time.Duration(5)*time.Second),
 	)
 	defer c.Close()
 
@@ -59,6 +59,10 @@ func TestCreateFacility_successful(t *testing.T) {
 
 	ok := false
 
+	if err := c.SendPackets(packets); err != nil {
+		t.Error(err)
+	}
+
 LOOP:
 	for {
 		select {
@@ -74,13 +78,7 @@ LOOP:
 			ok = res.StatusCode == response.StatusOk
 			break LOOP
 		default:
-			for _, p := range packets {
-				if err := c.SendPacket(p); err != nil {
-					t.Error(err)
-					break LOOP
-				}
-			}
-			time.Sleep(time.Second)
+			continue
 		}
 	}
 
