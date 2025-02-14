@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"reflect"
+	"server/internal/interfaces"
 	"server/internal/protocol"
 	"server/internal/protocol/constructors"
 	"server/internal/protocol/proto_defs"
@@ -249,6 +250,21 @@ func (c *Client) SendPackets(packets []*protocol.Packet) error {
 
 	for _, p := range packets {
 		if err := c.SendPacket(p); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) SendRpcRequestConstructors(constructors ...interfaces.RpcRequestConstructor) error {
+
+	for _, con := range constructors {
+		packets, err := con()
+		if err != nil {
+			return err
+		}
+		if err := c.SendPackets(packets); err != nil {
 			return err
 		}
 	}
