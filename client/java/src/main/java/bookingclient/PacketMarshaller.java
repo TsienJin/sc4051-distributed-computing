@@ -190,25 +190,16 @@ public class PacketMarshaller {
     public byte[] marshalQueryFacilityRequest(String facility, int numberOfDays) {
         // Facility Name as the payload
         byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
-        String fac = bytesToHex(facilityBytes);
-//        System.out.println("facility: " + fac);
-
-        ByteBuffer tmpBuffer = ByteBuffer.allocate(4); // Allocate 4 bytes (size of an int)
-        tmpBuffer.putInt(numberOfDays); // Put the int into the buffer
-        byte[] numberOfDaysBytes = tmpBuffer.array(); // Retrieve the byte array
+        byte numberOfDaysByte = (byte) numberOfDays; // 8 bit
 
         byte methodIdentifier = 0x02;
-        ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + numberOfDaysBytes.length);
+        ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + 1);
         buffer.put(methodIdentifier);
+        buffer.put(numberOfDaysByte);
         buffer.put(facilityBytes);
-        buffer.put(numberOfDaysBytes);
 
         byte[] combinedPayload = buffer.array();
-        String x = bytesToHex(combinedPayload);
-//        System.out.println("Combined Payload: " + x);
-//        System.out.println("payload length = " + combinedPayload.length);
 
-//        facilityBytes = buffer.array();
         return marshalPacket(
                 (byte) 0x02,  // Message Type (Request)
                 (byte) 0x00,  // Packet Number (0)
