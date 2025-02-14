@@ -21,6 +21,9 @@ class MenuState implements ClientState{
 
         int choice = UserInputUtils.getIntInput("Choose an option:");
         switch (choice) {
+            case 1:
+                client.setState(new QueryFacilityState());
+                break;
             case 5:
                 client.setState(new CreateFacilityState());
                 break;
@@ -72,6 +75,35 @@ class DeleteFacilityState implements ClientState{
         // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
         PacketMarshaller marshaller = new PacketMarshaller();  // Direct instantiation
         byte[] packet = marshaller.marshalDeleteFacilityRequest(facility);  // Marshal the facility data
+        byte[] ackpacket = null;
+        // Directly create the NetworkHandler and send the packet
+        NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
+        networkHandler.networkClient();
+        try {
+            ackpacket = networkHandler.sendPacketWithAck(packet);  // Send packet with acknowledgment handling
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        marshaller.unmarshalResponse(ackpacket);
+        // After processing, return to MenuState
+        client.setState(new MenuState());
+        client.handleRequest();
+
+        client.setState(new MenuState());
+        client.handleRequest();
+    }
+}
+
+class QueryFacilityState implements ClientState{
+    @Override
+    public void handleRequest(Client client) {
+        String facility = UserInputUtils.getStringInput("Query Facility Name:");
+        int numberOfDays = UserInputUtils.getIntInput("Number of Days:");
+
+        System.out.println("Querying Facility Name " + facility);
+        // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
+        PacketMarshaller marshaller = new PacketMarshaller();  // Direct instantiation
+        byte[] packet = marshaller.marshalQueryFacilityRequest(facility, numberOfDays);  // Marshal the facility data
         byte[] ackpacket = null;
         // Directly create the NetworkHandler and send the packet
         NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
