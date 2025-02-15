@@ -1,6 +1,7 @@
 package bookingclient;
 
 import java.io.IOException;
+import java.time.LocalTime;
 
 interface ClientState {
     void handleRequest(Client client);
@@ -23,6 +24,9 @@ class MenuState implements ClientState{
         switch (choice) {
             case 1:
                 client.setState(new QueryFacilityState());
+                break;
+            case 2:
+                client.setState(new BookFacilityState());
                 break;
             case 5:
                 client.setState(new CreateFacilityState());
@@ -117,6 +121,49 @@ class QueryFacilityState implements ClientState{
 
         client.setState(new MenuState());
         client.handleRequest();
+    }
+}
+
+class BookFacilityState implements ClientState{
+    @Override
+    public void handleRequest(Client client) {
+        String facility = UserInputUtils.getStringInput("Query Facility Name:");
+        int startTime = UserInputUtils.getIntInput("Enter hours since UNIX (startTime: " + getHoursSinceUnix() + "): ");
+        int endTime = UserInputUtils.getIntInput("Enter hours since UNIX (endTime: " + getHoursSinceUnix() + "): ");
+
+        System.out.println("Booking Facility Name " + facility);
+        // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
+        PacketMarshaller marshaller = new PacketMarshaller();  // Direct instantiation
+        byte[] packet = marshaller.marshalBookFacilityRequest(facility, startTime, endTime);  // Marshal the facility data
+        byte[] ackpacket = null;
+        // Directly create the NetworkHandler and send the packet
+        NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
+        networkHandler.networkClient();
+        try {
+            ackpacket = networkHandler.sendPacketWithAck(packet);  // Send packet with acknowledgment handling
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        marshaller.unmarshalResponse(ackpacket);
+        // After processing, return to MenuState
+        client.setState(new MenuState());
+        client.handleRequest();
+
+        client.setState(new MenuState());
+        client.handleRequest();
+    }
+
+    public long getHoursSinceUnix() {
+        // Get the current time in milliseconds since Unix epoch
+        long currentTimeMillis = System.currentTimeMillis();
+
+        // Convert milliseconds to seconds
+        long currentTimeSeconds = currentTimeMillis / 1000;
+
+        // Convert seconds to hours
+        long hoursSinceUnixEpoch = currentTimeSeconds / 3600;  // 3600 seconds in an hour
+
+        return hoursSinceUnixEpoch;
     }
 }
 

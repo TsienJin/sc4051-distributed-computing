@@ -2,6 +2,7 @@ package bookingclient;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
 import java.util.UUID;
 import java.util.zip.CRC32;
 
@@ -197,6 +198,43 @@ public class PacketMarshaller {
         buffer.put(methodIdentifier);
         buffer.put(numberOfDaysByte);
         buffer.put(facilityBytes);
+
+        byte[] combinedPayload = buffer.array();
+
+        return marshalPacket(
+                (byte) 0x02,  // Message Type (Request)
+                (byte) 0x00,  // Packet Number (0)
+                (byte) 0x01,  // Total Packets (1)
+                true,          // Ack Required
+                false,         // Fragment
+                combinedPayload  // 0x01, Payload (Facility Name)
+        );
+    }
+
+    public byte[] marshalBookFacilityRequest(String facility, int startTime, int endTime) {
+        // Facility Name as the payload
+        byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+        System.out.println("start: " + startTime + " end: " + endTime + " facility: " + facility);
+
+        byte[] startTimeBytes = new byte[3];
+        byte[] endTimeBytes = new byte[3];
+
+        // Manually shift the bits to extract the 3 least significant bytes
+        startTimeBytes[0] = (byte) (startTime >> 16);  // Most significant byte
+        startTimeBytes[1] = (byte) (startTime >> 8);   // Middle byte
+        startTimeBytes[2] = (byte) (startTime);        // Least significant byte
+
+        endTimeBytes[0] = (byte) (endTime >> 16);  // Most significant byte
+        endTimeBytes[1] = (byte) (endTime >> 8);   // Middle byte
+        endTimeBytes[2] = (byte) (endTime);        // Least significant byte
+
+        byte methodIdentifier = 0x11;
+        ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + startTimeBytes.length + endTimeBytes.length);
+        buffer.put(methodIdentifier);
+        buffer.put(startTimeBytes);
+        buffer.put(endTimeBytes);
+        buffer.put(facilityBytes);
+
 
         byte[] combinedPayload = buffer.array();
 
