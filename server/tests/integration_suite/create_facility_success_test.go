@@ -5,6 +5,7 @@ import (
 	"server/internal/rpc/response"
 	"server/internal/server"
 	"server/tests/client"
+	"server/tests/test_response"
 	"testing"
 	"time"
 )
@@ -32,23 +33,6 @@ func TestCreateFacility_successful(t *testing.T) {
 		t.Error(err)
 	}
 
-	ok := false
-
-LOOP:
-	for {
-		select {
-		case <-c.Ctx.Done():
-			break LOOP
-		case r := <-c.Responses: // we should only expect 1 response (ok or error)
-			ok = r.StatusCode == response.StatusOk
-			break LOOP
-		default:
-			continue
-		}
-	}
-
-	if !ok {
-		t.Error("Test did not pass, check if response was received")
-	}
+	c.ValidateResponses(t, test_response.BeStatus(response.StatusOk))
 
 }
