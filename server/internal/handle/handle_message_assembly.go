@@ -114,7 +114,7 @@ func (m *MessagePartial) IsComplete() (*protocol.Message, bool) {
 	defer m.RUnlock()
 
 	if m.IsCompleteCheck() {
-		slog.Debug("MessagePartial complete!", "MessageId", m.DistilledHeader.MessageId)
+		slog.Info("MessagePartial complete!", "MessageId", m.DistilledHeader.MessageId)
 		return protocol.NewMessageFromBytes(m.DistilledHeader, bytes.Join(m.Payloads, nil)), true
 	}
 
@@ -199,11 +199,11 @@ func (m *MessageAssembler) RequestMissingPackets() {
 		return
 	}
 
-	slog.Info("Requesting missing packets in all message partials")
+	slog.Debug("Requesting missing packets in all message partials")
 	for _, partial := range m.Incomplete {
 		go partial.RequestMissingPackets()
 	}
-	slog.Info("Requesting missing packets done")
+	slog.Debug("Requesting missing packets done")
 }
 
 func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) {
