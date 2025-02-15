@@ -1,7 +1,7 @@
 package integration_suite
 
 import (
-	"server/internal/rpc/request"
+	"server/internal/rpc/request/request_constructor"
 	"server/internal/rpc/response"
 	"server/internal/server"
 	"server/tests/client"
@@ -21,10 +21,13 @@ func TestCreateFacility_successful(t *testing.T) {
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
 		client.WithTimeout(time.Duration(5)*time.Second),
 	)
+	if err != nil {
+		t.Error(err)
+	}
 	defer c.Close()
 
 	if err := c.SendRpcRequestConstructors(
-		request.NewFacilityCreatePacket("TestCreateFacility_successful"),
+		request_constructor.NewFacilityCreatePacket("TestCreateFacility_successful"),
 	); err != nil {
 		t.Error(err)
 	}

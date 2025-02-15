@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestCreateFacility_fail_duplicate(t *testing.T) {
+func TestCreateBooking_successful(t *testing.T) {
 
 	serverPort, err := server.ServeRandomPort()
 	if err != nil {
@@ -21,11 +21,14 @@ func TestCreateFacility_fail_duplicate(t *testing.T) {
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
 		client.WithTimeout(time.Duration(5)*time.Second),
 	)
+	if err != nil {
+		t.Error(err)
+	}
 	defer c.Close()
 
 	if err := c.SendRpcRequestConstructors(
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
+		request_constructor.NewFacilityCreatePacket("TestCreateBooking_successful"),
+		request_constructor.NewBookingMakePacket("TestCreateBooking_successful", time.Now(), time.Now().Add(time.Duration(3)*time.Hour)),
 	); err != nil {
 		t.Error(err)
 	}
@@ -50,12 +53,12 @@ LOOP:
 					t.Error("Expected first packet to be ok")
 				}
 			case 1: // Second packet
-				if r.StatusCode == response.StatusBadRequest {
+				if r.StatusCode == response.StatusOk {
 					resCount++
 					secondPacketOk = true
 					break LOOP
 				} else {
-					t.Error("Expected second packet to be error")
+					t.Error("Expected second packet to be ok")
 				}
 			default:
 				t.Error("ResCount out of range")
