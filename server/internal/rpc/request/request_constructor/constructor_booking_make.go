@@ -1,27 +1,29 @@
-package request
+package request_constructor
 
 import (
-	"server/internal/bookings"
 	"server/internal/interfaces"
 	"server/internal/protocol"
 	"server/internal/protocol/proto_defs"
+	"server/internal/rpc/request"
+	"time"
 )
 
-func NewFacilityCreatePacket(name string) interfaces.RpcRequestConstructor {
-
+func NewBookingMakePacket(
+	facility string,
+	start time.Time,
+	end time.Time,
+) interfaces.RpcRequestConstructor {
 	return func() ([]*protocol.Packet, error) {
-		payload := &FacilityCreatePayload{
-			Name: bookings.FacilityName(name),
-		}
 
-		payloadByte, err := payload.MarshalBinary()
+		payload := request.NewBookingMakePayload(facility, start, end)
+		payloadBytes, err := payload.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
 
-		r := Request{
-			MethodIdentifier: MethodIdentifierFacilityCreate,
-			Payload:          payloadByte,
+		r := request.Request{
+			MethodIdentifier: request.MethodIdentifierBookingMake,
+			Payload:          payloadBytes,
 		}
 
 		headerDistilled := &protocol.PacketHeaderDistilled{

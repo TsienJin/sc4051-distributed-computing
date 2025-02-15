@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestCreateFacility_successful(t *testing.T) {
+func TestCreateBooking_successful(t *testing.T) {
 
 	serverPort, err := server.ServeRandomPort()
 	if err != nil {
@@ -28,11 +28,16 @@ func TestCreateFacility_successful(t *testing.T) {
 	defer c.Close()
 
 	if err := c.SendRpcRequestConstructors(
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_successful"),
+		request_constructor.NewFacilityCreatePacket("TestCreateBooking_successful"),
+		request_constructor.NewBookingMakePacket("TestCreateBooking_successful", time.Now(), time.Now().Add(time.Duration(3)*time.Hour)),
 	); err != nil {
 		t.Error(err)
 	}
 
-	c.ValidateResponses(t, test_response.BeStatus(response.StatusOk))
+	c.ValidateResponses(
+		t,
+		test_response.BeStatus(response.StatusOk),
+		test_response.BeStatus(response.StatusOk),
+	)
 
 }
