@@ -5,6 +5,18 @@ import (
 	"time"
 )
 
+func TestBooking_Validate(t *testing.T) {
+	b1 := &Booking{
+		Id:    1,
+		Start: time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local),
+		End:   time.Date(2025, time.January, 1, 3, 0, 0, 0, time.Local),
+	}
+
+	if err := b1.validate(); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestBooking_Overlaps(t *testing.T) {
 	b1 := &Booking{
 		Id:    1,

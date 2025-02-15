@@ -61,7 +61,7 @@ func (h *History) CleanUp() {
 	h.Lock()
 	defer h.Unlock()
 
-	slog.Info("Cleaning up expired responses")
+	slog.Debug("Cleaning up expired responses")
 	count := 0
 
 	expiredTime := time.Now().Add(-time.Duration(vars.GetStaticEnv().ResponseTTL) * time.Millisecond)
@@ -72,7 +72,11 @@ func (h *History) CleanUp() {
 			delete(h.responses, id)
 		}
 	}
-	slog.Info(fmt.Sprintf("Cleaned up %d expired responses", count))
+	if count > 0 {
+		slog.Info(fmt.Sprintf("Cleaned up %d expired responses", count))
+	} else {
+		slog.Debug("No expired responses to clean up")
+	}
 }
 
 func (h *History) SetProcessing(m proto_defs.MessageId) {

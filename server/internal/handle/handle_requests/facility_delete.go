@@ -13,7 +13,7 @@ func FacilityDelete(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 
 	// Get payload
 	var p request.FacilityDeletePayload
-	if err := p.UnmarshalBinary(message.Payload); err != nil {
+	if err := p.UnmarshalBinary(message.Payload[1:]); err != nil {
 		slog.Error("Unable to unmarshall FacilityDeletePayload", "err", err)
 		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusInternalServerError, err.Error()))
 		return
