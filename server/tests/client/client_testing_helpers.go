@@ -1,6 +1,7 @@
 package client
 
 import (
+	"server/internal/interfaces"
 	"server/tests/test_response"
 	"testing"
 )
@@ -41,4 +42,26 @@ LOOP:
 			continue
 		}
 	}
+}
+
+func (c *Client) SendSyncWithValidator(
+	t *testing.T,
+	constructors []interfaces.RpcRequestConstructor,
+	validators []test_response.ResponseValidator,
+) {
+
+	// Sanity check to ensure that tests match validators
+	if len(constructors) != len(validators) {
+		t.Error("Constructors and validators do not match in length")
+	}
+
+	number := len(constructors)
+	for i := 0; i < number; i++ {
+		if err := c.SendRpcRequestConstructors(constructors[i]); err != nil {
+			t.Error(err)
+			break
+		}
+		c.ValidateResponses(t, validators[i])
+	}
+
 }
