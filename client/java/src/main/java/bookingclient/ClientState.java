@@ -1,6 +1,7 @@
 package bookingclient;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.LocalTime;
 
 interface ClientState {
@@ -33,6 +34,9 @@ class MenuState implements ClientState{
                 break;
             case 6:
                 client.setState(new DeleteFacilityState());
+                break;
+            case 8:
+                client.setState(new DeleteBookingState());
                 break;
             case 9:
                 System.out.println("Exiting system...");
@@ -164,6 +168,35 @@ class BookFacilityState implements ClientState{
         long hoursSinceUnixEpoch = currentTimeSeconds / 3600;  // 3600 seconds in an hour
 
         return hoursSinceUnixEpoch;
+    }
+}
+
+// TODO
+class DeleteBookingState implements ClientState {
+    @Override
+    public void handleRequest(Client client) {
+        int confirmationCode = UserInputUtils.getHexInput("Delete Booking for Confirmation code:");
+
+        System.out.println("Deleting booking Facility Name " + confirmationCode);
+        // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
+        PacketMarshaller marshaller = new PacketMarshaller();  // Direct instantiation
+        byte[] packet = marshaller.marshalDeleteBookingRequest(confirmationCode);  // Marshal the facility data
+        byte[] ackpacket = null;
+        // Directly create the NetworkHandler and send the packet
+        NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
+        networkHandler.networkClient();
+        try {
+            ackpacket = networkHandler.sendPacketWithAck(packet);  // Send packet with acknowledgment handling
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        marshaller.unmarshalResponse(ackpacket);
+        // After processing, return to MenuState
+        client.setState(new MenuState());
+        client.handleRequest();
+
+        client.setState(new MenuState());
+        client.handleRequest();
     }
 }
 

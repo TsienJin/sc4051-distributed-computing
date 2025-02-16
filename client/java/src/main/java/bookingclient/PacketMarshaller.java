@@ -114,7 +114,7 @@ public class PacketMarshaller {
                 checksum)){
             System.out.println("Checksum is valid");
         }
-        System.out.println("Payload bytes" + bytesToHex(payload));
+        System.out.println("Payload bytes: " + bytesToHex(payload));
         System.out.println("Payload String: " + new String(payload, StandardCharsets.UTF_8));
 
         if (Debugger.isEnabled()){
@@ -245,6 +245,38 @@ public class PacketMarshaller {
                 true,          // Ack Required
                 false,         // Fragment
                 combinedPayload  // 0x01, Payload (Facility Name)
+        );
+    }
+
+    public byte[] marshalDeleteBookingRequest(int confirmationCode) {
+        String hex = Integer.toHexString(confirmationCode);
+        System.out.println("hex: " + hex);
+
+        long unsignedLongValue = Long.parseLong(hex, 16);
+        int unsignedIntValue = (int) (unsignedLongValue & 0xFFFFFFFFL);
+        System.out.println("unsignedIntValue: " + unsignedIntValue);
+
+        byte[] confirmationCodeBytes = new byte[2];
+        confirmationCodeBytes[0] = (byte) (unsignedIntValue >> 8);
+        confirmationCodeBytes[1] = (byte) (unsignedIntValue & 0xFF);
+        System.out.println("confirmationCodeBytes: " + bytesToHex(confirmationCodeBytes));
+
+        byte methodIdentifier = 0x13;
+
+        // Allocate buffer with the size for the method identifier + the confirmationCode bytes
+        ByteBuffer buffer = ByteBuffer.allocate(1 + 2);
+        buffer.put(methodIdentifier);  // Add method identifier
+        buffer.put(confirmationCodeBytes);
+
+        byte[] combinedPayload = buffer.array();
+
+        return marshalPacket(
+                (byte) 0x02,  // Message Type (Request)
+                (byte) 0x00,  // Packet Number (0)
+                (byte) 0x01,  // Total Packets (1)
+                true,          // Ack Required
+                false,         // Fragment
+                combinedPayload  // Payload (confirmationCode in bytes)
         );
     }
 }

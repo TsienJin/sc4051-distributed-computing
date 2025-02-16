@@ -23,4 +23,12 @@ public class UserInputUtils {
         scanner.nextLine();
         return number;
     }
+
+    public static int getHexInput(String prompt) {
+        System.out.println(prompt); // Display the prompt to the user
+        int number = scanner.nextInt(16);
+        System.out.println(number);
+        scanner.nextLine();
+        return number;
+    }
 }
