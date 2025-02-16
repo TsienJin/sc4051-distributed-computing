@@ -1,6 +1,7 @@
 package bookings
 
 import (
+	"encoding/binary"
 	"errors"
 	"math/rand"
 	"time"
@@ -57,4 +58,10 @@ func (b *Booking) validate() error {
 
 func (b *Booking) Overlaps(other *Booking) bool {
 	return b.Start.Before(other.End) && other.Start.Before(b.End)
+}
+
+func (b *Booking) GetIdAsBytes() []byte {
+	bin := make([]byte, 2)
+	binary.BigEndian.PutUint16(bin, b.Id)
+	return bin
 }
