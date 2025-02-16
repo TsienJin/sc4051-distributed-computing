@@ -1,6 +1,7 @@
 package handle_requests
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"server/internal/protocol"
@@ -24,6 +25,8 @@ func BookingMake(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusBadRequest, err.Error()))
 		return
 	}
+
+	slog.Info("Booking has been made", "BookingId", fmt.Sprintf("%v", booking.Id))
 
 	res := response.NewResponse(
 		response.WithStatusCode(response.StatusOk),
