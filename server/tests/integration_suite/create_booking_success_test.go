@@ -1,6 +1,7 @@
 package integration_suite
 
 import (
+	"server/internal/interfaces"
 	"server/internal/rpc/request/request_constructor"
 	"server/internal/rpc/response"
 	"server/internal/server"
@@ -27,17 +28,14 @@ func TestCreateBooking_successful(t *testing.T) {
 	}
 	defer c.Close()
 
-	if err := c.SendRpcRequestConstructors(
-		request_constructor.NewFacilityCreatePacket("TestCreateBooking_successful"),
-		request_constructor.NewBookingMakePacket("TestCreateBooking_successful", time.Now(), time.Now().Add(time.Duration(3)*time.Hour)),
-	); err != nil {
-		t.Error(err)
-	}
-
-	c.ValidateResponses(
+	c.SendSyncWithValidator(
 		t,
-		test_response.BeStatus(response.StatusOk),
-		test_response.BeStatus(response.StatusOk),
+		[]interfaces.RpcRequestConstructor{
+			request_constructor.NewFacilityCreatePacket("TestCreateBooking_successful"),
+			request_constructor.NewBookingMakePacket("TestCreateBooking_successful", time.Now(), time.Now().Add(time.Duration(3)*time.Hour))},
+		[]test_response.ResponseValidator{
+			test_response.BeStatus(response.StatusOk),
+			test_response.BeStatus(response.StatusOk)},
 	)
 
 }

@@ -123,6 +123,16 @@ func (c *Client) handleIncomingPacket() {
 					c.logger.Error("Unable to unmarshal packet payload into response", "err", err)
 					continue
 				}
+
+				// Remove original packet from send manager
+				// There would only be one request packet, therefore we can assume the packet ident to have packetNumber = 0
+				ident := &protocol.PacketIdent{
+					MessageId:    res.OriginalMessageId,
+					PacketNumber: 0,
+				}
+				c.manager.clear(ident)
+
+				// Send res to incoming channel
 				c.Responses <- &res
 				continue
 			default: // Unrecognised message types + requests
