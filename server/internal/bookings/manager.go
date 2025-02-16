@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 )
 
 // Manager is responsible for handling facilities, bookings and monitoring.
@@ -84,6 +85,10 @@ func (m *Manager) DeleteFacility(name FacilityName) error {
 func (m *Manager) NewBooking(n FacilityName, b Booking) error {
 	m.Lock()
 	defer m.Unlock()
+
+	if b.End.Before(time.Now()) {
+		slog.Error("Booking time must not end before current time!", "currentTime", time.Now(), "bookingTimeEnd", b.End)
+	}
 
 	if _, exists := m.Facilities[n]; !exists {
 		slog.Error("Attempted to book a Facility that does not exists!", "FacilityName", n)
