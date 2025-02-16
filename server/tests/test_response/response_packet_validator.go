@@ -1,6 +1,7 @@
 package test_response
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"reflect"
@@ -55,6 +56,19 @@ func BeStatus(status response.StatusCode) ResponseValidator {
 		if r.StatusCode != status {
 			return errors.New(fmt.Sprintf("status code does not match, E: %v, R: %v", status, r.StatusCode))
 		}
+		return nil
+	}
+}
+
+func ExtractBookingId(c chan uint16) ResponseValidator {
+	return func(r *response.Response) error {
+		if len(r.Payload) != 2 {
+			return fmt.Errorf("expected 2 bytes payload, received %v bytes", len(r.Payload))
+		}
+
+		id := binary.BigEndian.Uint16(r.Payload)
+		c <- id
+
 		return nil
 	}
 }
