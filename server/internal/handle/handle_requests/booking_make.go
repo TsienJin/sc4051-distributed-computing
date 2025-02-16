@@ -3,7 +3,6 @@ package handle_requests
 import (
 	"log/slog"
 	"net"
-	"server/internal/bookings"
 	"server/internal/protocol"
 	"server/internal/rpc/request"
 	"server/internal/rpc/response"
@@ -26,14 +25,12 @@ func BookingMake(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 		return
 	}
 
-	// Get manager
-	m := bookings.GetManager()
-	if err := m.NewBooking(p.Name, booking); err != nil {
-		slog.Error("Unable to create new Booking", "err", err)
-		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusBadRequest, err.Error()))
-		return
-	}
+	res := response.NewResponse(
+		response.WithStatusCode(response.StatusOk),
+		response.WithOriginalMessageId(message.Header.MessageId),
+		response.WithPayloadBytes(booking.GetIdAsBytes()),
+	)
 
 	slog.Info("Successfully made booking", "Booking", p)
-	response.SendResponse(c, a, response.NewOkResponse(message.Header.MessageId))
+	response.SendResponse(c, a, res)
 }
