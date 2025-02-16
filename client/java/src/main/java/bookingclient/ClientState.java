@@ -171,13 +171,12 @@ class BookFacilityState implements ClientState{
     }
 }
 
-// TODO
 class DeleteBookingState implements ClientState {
     @Override
     public void handleRequest(Client client) {
         int confirmationCode = UserInputUtils.getHexInput("Delete Booking for Confirmation code:");
 
-        System.out.println("Deleting booking Facility Name " + confirmationCode);
+        System.out.println("Deleting booking with confirmation code: " + confirmationCode);
         // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
         PacketMarshaller marshaller = new PacketMarshaller();  // Direct instantiation
         byte[] packet = marshaller.marshalDeleteBookingRequest(confirmationCode);  // Marshal the facility data

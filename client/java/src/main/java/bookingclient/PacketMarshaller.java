@@ -244,22 +244,22 @@ public class PacketMarshaller {
                 (byte) 0x01,  // Total Packets (1)
                 true,          // Ack Required
                 false,         // Fragment
-                combinedPayload  // 0x01, Payload (Facility Name)
+                combinedPayload  // 0x01, Payload (StartTime, EndTime, FacilityName)
         );
     }
 
     public byte[] marshalDeleteBookingRequest(int confirmationCode) {
         String hex = Integer.toHexString(confirmationCode);
-        System.out.println("hex: " + hex);
 
+        // convert from string to hex
         long unsignedLongValue = Long.parseLong(hex, 16);
+
+        // convert to int
         int unsignedIntValue = (int) (unsignedLongValue & 0xFFFFFFFFL);
-        System.out.println("unsignedIntValue: " + unsignedIntValue);
 
         byte[] confirmationCodeBytes = new byte[2];
         confirmationCodeBytes[0] = (byte) (unsignedIntValue >> 8);
         confirmationCodeBytes[1] = (byte) (unsignedIntValue & 0xFF);
-        System.out.println("confirmationCodeBytes: " + bytesToHex(confirmationCodeBytes));
 
         byte methodIdentifier = 0x13;
 
@@ -268,7 +268,7 @@ public class PacketMarshaller {
         buffer.put(methodIdentifier);  // Add method identifier
         buffer.put(confirmationCodeBytes);
 
-        byte[] combinedPayload = buffer.array();
+        byte[] payload = buffer.array();
 
         return marshalPacket(
                 (byte) 0x02,  // Message Type (Request)
@@ -276,7 +276,7 @@ public class PacketMarshaller {
                 (byte) 0x01,  // Total Packets (1)
                 true,          // Ack Required
                 false,         // Fragment
-                combinedPayload  // Payload (confirmationCode in bytes)
+                payload  // Payload (confirmationCode in bytes)
         );
     }
 }
