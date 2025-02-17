@@ -11,6 +11,13 @@ type FacilityMonitorPayload struct {
 	Ttl  int
 }
 
+func NewFacilityMonitorPayload(name string, ttl int) *FacilityMonitorPayload {
+	return &FacilityMonitorPayload{
+		Name: bookings.FacilityName(name),
+		Ttl:  ttl,
+	}
+}
+
 func (f *FacilityMonitorPayload) UnmarshalBinary(data []byte) error {
 	if len(data) < 3 {
 		return fmt.Errorf("data length too short: %d, expected at least 3", len(data))
