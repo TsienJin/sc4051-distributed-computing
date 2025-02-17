@@ -9,6 +9,7 @@ import (
 	"server/internal/network"
 	"server/internal/protocol"
 	"server/internal/protocol/constructors"
+	"server/internal/rpc/response"
 	"server/internal/vars"
 	"sync"
 	"time"
@@ -215,7 +216,16 @@ func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPA
 
 	// Check if the message has already been completed (prevents duplicate messages)
 	if _, exists := m.Complete[ident]; exists {
-		slog.Info("Message has already been assembled and handed off", "MessageId", p.Header.MessageId)
+		slog.Info("Message has already been assembled and handed off, resending cached response", "MessageId", p.Header.MessageId)
+		res, err := response.GetResponseHistoryInstance().GetResponse(p.Header.MessageId)
+		if err != nil {
+			slog.Error("Unable to resend cached response", "err", err)
+		}
+		if res == nil {
+			slog.Warn("Response has yet to be completed, dropping request packet")
+			return
+		}
+		response.SendResponse(c, a, res)
 		return
 	}
 
