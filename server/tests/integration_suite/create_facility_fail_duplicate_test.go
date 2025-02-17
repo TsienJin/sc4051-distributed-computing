@@ -1,6 +1,7 @@
 package integration_suite
 
 import (
+	"server/internal/interfaces"
 	"server/internal/rpc/request/request_constructor"
 	"server/internal/rpc/response"
 	"server/internal/server"
@@ -27,17 +28,16 @@ func TestCreateFacility_fail_duplicate(t *testing.T) {
 	}
 	defer c.Close()
 
-	if err := c.SendRpcRequestConstructors(
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
-	); err != nil {
-		t.Error(err)
-	}
-
-	c.ValidateResponses(
+	c.SendSyncWithValidator(
 		t,
-		test_response.BeStatus(response.StatusOk),
-		test_response.BeStatus(response.StatusBadRequest),
+		[]interfaces.RpcRequestConstructor{
+			request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
+			request_constructor.NewFacilityCreatePacket("TestCreateFacility_fail_duplicate"),
+		},
+		[]test_response.ResponseValidator{
+			test_response.BeStatus(response.StatusOk),
+			test_response.BeStatus(response.StatusBadRequest),
+		},
 	)
 
 }
