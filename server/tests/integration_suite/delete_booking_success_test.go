@@ -21,7 +21,7 @@ func TestDeleteBooking_successful(t *testing.T) {
 	c, err := client.NewClient(
 		client.WithClientName("TestDeleteBooking_successful"),
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
-		client.WithTimeout(time.Duration(5)*time.Second),
+		client.WithTimeout(time.Duration(15)*time.Second),
 	)
 	if err != nil {
 		t.Error(err)

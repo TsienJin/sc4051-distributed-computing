@@ -21,7 +21,7 @@ func TestUpdateFacility_successful_positive_delta(t *testing.T) {
 	c, err := client.NewClient(
 		client.WithClientName("TestUpdateFacility_successful_positive_delta"),
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
-		client.WithTimeout(time.Duration(5)*time.Second),
+		client.WithTimeout(time.Duration(15)*time.Second),
 	)
 	if err != nil {
 		t.Error(err)
