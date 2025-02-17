@@ -15,6 +15,7 @@ type Client struct {
 	logger *slog.Logger
 	name   string
 
+	sequencer    *responseSequencer
 	manager      *sendManager
 	targetServer *net.UDPAddr
 	conn         *net.UDPConn

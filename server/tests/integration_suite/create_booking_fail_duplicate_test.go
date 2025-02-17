@@ -21,7 +21,7 @@ func TestCreateBooking_fail_duplicate(t *testing.T) {
 	c, err := client.NewClient(
 		client.WithClientName("TestCreateBooking_fail_duplicate"),
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
-		client.WithTimeout(time.Duration(5)*time.Second),
+		client.WithTimeout(time.Duration(15)*time.Second),
 	)
 	if err != nil {
 		t.Error(err)

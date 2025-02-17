@@ -3,15 +3,17 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"server/internal/protocol"
+	"server/internal/protocol/proto_defs"
 	"sync"
 	"time"
 )
 
 const (
-	PACKET_TTL    = time.Duration(750) * time.Millisecond
+	PACKET_TTL    = time.Duration(15000) * time.Millisecond
 	PACKET_RESEND = time.Duration(50) * time.Millisecond
 )
 
@@ -35,11 +37,12 @@ func newPacketHistoryRecord(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) 
 }
 
 type sendManager struct {
-	wg         sync.WaitGroup
-	mu         sync.RWMutex
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	history    map[protocol.PacketIdent]*packetHistoryRecord
+	wg             sync.WaitGroup
+	mu             sync.RWMutex
+	ctx            context.Context
+	cancelFunc     context.CancelFunc
+	history        map[protocol.PacketIdent]*packetHistoryRecord
+	requestHistory map[protocol.PacketIdent]*packetHistoryRecord
 }
 
 func newSendHistory() *sendManager {
@@ -47,15 +50,17 @@ func newSendHistory() *sendManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := &sendManager{
-		wg:         sync.WaitGroup{},
-		mu:         sync.RWMutex{},
-		ctx:        ctx,
-		cancelFunc: cancel,
-		history:    make(map[protocol.PacketIdent]*packetHistoryRecord),
+		wg:             sync.WaitGroup{},
+		mu:             sync.RWMutex{},
+		ctx:            ctx,
+		cancelFunc:     cancel,
+		history:        make(map[protocol.PacketIdent]*packetHistoryRecord),
+		requestHistory: make(map[protocol.PacketIdent]*packetHistoryRecord),
 	}
 
-	s.wg.Add(1)
+	s.wg.Add(2)
 	go s.resendUnAckedPackets()
+	go s.resendPendingRequests()
 
 	return s
 }
@@ -74,16 +79,12 @@ LOOP:
 			s.mu.Lock()
 
 			now := time.Now()
-			expireTime := now.Add(-PACKET_TTL)
 			resendTime := now.Add(-PACKET_RESEND)
 
-			for k, r := range s.history {
-				if r.created.Before(expireTime) {
-					delete(s.history, k)
-					continue
-				}
+			for _, r := range s.history {
 
 				if r.updated.Before(resendTime) {
+					slog.Info(fmt.Sprintf("[CLIENT SEND MANAGER] Resending packet with Id %v", r.packet.Header.MessageId))
 					err := s.sendWithoutSet(r.conn, r.addr, r.packet)
 					if err != nil {
 						slog.Error(err.Error())
@@ -98,7 +99,47 @@ LOOP:
 			continue
 		}
 	}
+}
 
+func (s *sendManager) resendPendingRequests() {
+	defer s.wg.Done()
+
+	t := time.NewTicker(PACKET_RESEND)
+
+LOOP:
+	for {
+		select {
+		case <-s.ctx.Done():
+			break LOOP
+		case <-t.C:
+			s.mu.Lock()
+
+			now := time.Now()
+			expireTime := now.Add(-PACKET_TTL)
+			resendTime := now.Add(-PACKET_RESEND)
+
+			for k, r := range s.requestHistory {
+				if r.created.Before(expireTime) {
+					delete(s.requestHistory, k)
+					continue
+				}
+
+				if r.updated.Before(resendTime) {
+					slog.Info(fmt.Sprintf("[CLIENT SEND MANAGER] Resending request with Id %v", r.packet.Header.MessageId))
+					err := s.sendWithoutSet(r.conn, r.addr, r.packet)
+					if err != nil {
+						slog.Error(err.Error())
+						continue
+					}
+					r.updated = now
+				}
+			}
+			s.mu.Unlock()
+
+		default:
+			continue
+		}
+	}
 }
 
 func (s *sendManager) sendWithoutSet(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) error {
@@ -133,7 +174,14 @@ func (s *sendManager) set(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) {
 		r.updated = time.Now()
 	} else {
 		s.history[protocol.ExtractIdentFromPacket(p)] = newPacketHistoryRecord(c, a, p)
+	}
 
+	if p.Header.MessageType == proto_defs.MessageTypeRequest {
+		if r, exists := s.requestHistory[protocol.ExtractIdentFromPacket(p)]; exists {
+			r.updated = time.Now()
+		} else {
+			s.requestHistory[protocol.ExtractIdentFromPacket(p)] = newPacketHistoryRecord(c, a, p)
+		}
 	}
 }
 
@@ -141,6 +189,12 @@ func (s *sendManager) clear(i *protocol.PacketIdent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.history, *i)
+}
+
+func (s *sendManager) clearRequest(i *protocol.PacketIdent) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.requestHistory, *i)
 }
 
 func (s *sendManager) get(i *protocol.PacketIdent) (*protocol.Packet, error) {
