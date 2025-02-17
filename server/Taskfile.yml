@@ -21,6 +21,7 @@ tasks:
   test:integration:
     desc: "Run integration tests"
     cmds:
+      - go clean -testcache
       - gotestsum ./tests/... --race
 
   ### Execute server (locally)
