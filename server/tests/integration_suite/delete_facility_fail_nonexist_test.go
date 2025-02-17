@@ -2,6 +2,7 @@ package integration_suite
 
 import (
 	"server/internal/client"
+	"server/internal/interfaces"
 	"server/internal/rpc/request/request_constructor"
 	"server/internal/rpc/response"
 	"server/internal/server"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-func TestCreateFacility_successful(t *testing.T) {
+func TestDeleteFacility_fail_non_exists(t *testing.T) {
 
 	serverPort, err := server.ServeRandomPort()
 	if err != nil {
@@ -18,7 +19,7 @@ func TestCreateFacility_successful(t *testing.T) {
 	}
 
 	c, err := client.NewClient(
-		client.WithClientName("TestCreateFacility_successful"),
+		client.WithClientName("TestDeleteFacility_fail_non_exists"),
 		client.WithTargetAsIpV4("127.0.0.1", serverPort),
 		client.WithTimeout(time.Duration(15)*time.Second),
 	)
@@ -27,12 +28,14 @@ func TestCreateFacility_successful(t *testing.T) {
 	}
 	defer c.Close()
 
-	if err := c.SendRpcRequestConstructors(
-		request_constructor.NewFacilityCreatePacket("TestCreateFacility_successful"),
-	); err != nil {
-		t.Error(err)
-	}
-
-	c.ValidateResponses(t, test_response.BeStatus(response.StatusOk))
+	c.SendSyncWithValidator(
+		t,
+		[]interfaces.RpcRequestConstructor{
+			request_constructor.NewFacilityDeletePacket("TestDeleteFacility_fail_non_exists"),
+		},
+		[]test_response.ResponseValidator{
+			test_response.BeStatus(response.StatusBadRequest),
+		},
+	)
 
 }

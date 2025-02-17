@@ -1,11 +1,11 @@
 package integration_suite
 
 import (
+	"server/internal/client"
 	"server/internal/interfaces"
 	"server/internal/rpc/request/request_constructor"
 	"server/internal/rpc/response"
 	"server/internal/server"
-	"server/tests/client"
 	"server/tests/test_response"
 	"testing"
 	"time"
