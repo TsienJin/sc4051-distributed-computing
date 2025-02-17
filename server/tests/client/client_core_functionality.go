@@ -131,9 +131,11 @@ func (c *Client) handleIncomingPacket() {
 					PacketNumber: 0,
 				}
 				c.manager.clear(ident)
+				c.manager.clearRequest(ident)
 
-				// Send res to incoming channel
-				c.Responses <- &res
+				// Sequence response and have sequencer fire them to consumer
+				c.sequencer.handle(ident.MessageId, &res)
+
 				continue
 			default: // Unrecognised message types + requests
 				c.logger.Warn("Unsupported packet type", "type", p.Header.MessageType)
@@ -155,6 +157,13 @@ func (c *Client) Close() {
 }
 
 func (c *Client) SendPacket(p *protocol.Packet) error {
+
+	if p.Header.MessageType == proto_defs.MessageTypeRequest {
+		// setting expected response order
+		// this is safe since by protocol all messages are only 1 packet size
+		c.sequencer.expect(p.Header.MessageId)
+	}
+
 	c.logger.Info("Sending packet", "packet", p)
 	return c.manager.send(c.conn, c.targetServer, p)
 }

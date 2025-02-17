@@ -26,6 +26,8 @@ LOOP:
 			break LOOP
 		case r := <-c.Responses:
 
+			t.Logf("Recived new packet: %v", r)
+
 			if packetCount >= len(rv) {
 				t.Error("Unexpected packet to validate")
 			}
@@ -34,6 +36,8 @@ LOOP:
 				t.Error(err)
 			}
 			packetCount++
+
+			t.Logf("Successfully validated another packet")
 
 			if packetCount == len(rv) {
 				break LOOP

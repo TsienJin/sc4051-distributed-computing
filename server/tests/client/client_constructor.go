@@ -47,9 +47,12 @@ func WithTimeout(t time.Duration) NewClientOpt {
 }
 
 func NewClient(opts ...NewClientOpt) (*Client, error) {
+	outChan := make(chan *response.Response, 8)
+
 	c := &Client{
+		sequencer:     newResponseSequencer(outChan),
 		responseBytes: make(chan [proto_defs.PacketSizeLimit]byte, 8),
-		Responses:     make(chan *response.Response, 8),
+		Responses:     outChan,
 	}
 	c.Ctx, c.Cancel = context.WithCancel(context.Background())
 	c.logger = tests.NewNamedTestLogger(c.name)
