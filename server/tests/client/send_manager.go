@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	PACKET_TTL    = time.Duration(750) * time.Millisecond
+	PACKET_TTL    = time.Duration(15000) * time.Millisecond
 	PACKET_RESEND = time.Duration(50) * time.Millisecond
 )
 
@@ -58,8 +58,9 @@ func newSendHistory() *sendManager {
 		requestHistory: make(map[protocol.PacketIdent]*packetHistoryRecord),
 	}
 
-	s.wg.Add(1)
+	s.wg.Add(2)
 	go s.resendUnAckedPackets()
+	go s.resendPendingRequests()
 
 	return s
 }
@@ -78,14 +79,9 @@ LOOP:
 			s.mu.Lock()
 
 			now := time.Now()
-			expireTime := now.Add(-PACKET_TTL)
 			resendTime := now.Add(-PACKET_RESEND)
 
-			for k, r := range s.history {
-				if r.created.Before(expireTime) {
-					delete(s.history, k)
-					continue
-				}
+			for _, r := range s.history {
 
 				if r.updated.Before(resendTime) {
 					slog.Info(fmt.Sprintf("[CLIENT SEND MANAGER] Resending packet with Id %v", r.packet.Header.MessageId))
