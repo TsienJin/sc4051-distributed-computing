@@ -4,6 +4,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class NetworkHandler {
@@ -34,6 +35,7 @@ public class NetworkHandler {
                 System.out.println(bytesToHex(DatagramPacket.getData()));
                 socket.send(DatagramPacket);
                 socket.receive(ackPacket);
+                System.out.println("ack time" + bytesToHex(ackPacket.getData()));
                 socket.receive(ackPacket);
                 System.out.println("second time" + bytesToHex(ackPacket.getData()));
                 return ackPacket.getData();
@@ -46,9 +48,17 @@ public class NetworkHandler {
         throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
 
     }
-    //Helper method to check if a packet recieved is a response
     public static boolean isAck(byte[] packet){
-        return true;
+        //Helper method to check if a packet recieved is a response
+        if(packet.length < 18){
+            throw new IllegalArgumentException("Packet too short");
+        }else {
+            byte packetTypeBytes = packet[18];
+            if(packetTypeBytes != PacketType.ACK.getCode()){
+                return false;
+            }
+            return true;
+        }
     }
     // Helper method to convert byte array to hex string for easier debugging
     public static String bytesToHex(byte[] byteArray) {

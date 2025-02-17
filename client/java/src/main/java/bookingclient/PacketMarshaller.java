@@ -3,6 +3,7 @@ package bookingclient;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.zip.CRC32;
 
@@ -90,7 +91,7 @@ public class PacketMarshaller {
         checksumBuffer.putInt((int) checksumValue);
         return checksumBuffer.array();
     }
-    public byte[] unmarshalResponse(byte[] response) {
+    public UnmarshalledPacket unmarshalResponse(byte[] response){
 
         ByteBuffer buffer = ByteBuffer.wrap(response);
         if(Debugger.isEnabled()){
@@ -114,9 +115,17 @@ public class PacketMarshaller {
                 checksum)){
             System.out.println("Checksum is valid");
         }
-        System.out.println("Payload bytes: " + bytesToHex(payload));
-        System.out.println("Payload String: " + new String(payload, StandardCharsets.UTF_8));
+        UnmarshalledPacket unmarshalled = createUnmarshalledPacketFromPayload(payload);
 
+        if (unmarshalled.getStatus() != 200){
+            if(payloadLength > 35){
+            byte[] errorTextBytes = Arrays.copyOfRange(payload, 18, payloadLength);
+                System.out.println("Error Text: " + new String(errorTextBytes, StandardCharsets.UTF_8));
+            }
+            System.out.println("Error Code: " + unmarshalled.getStatus());
+        }else{
+            System.out.println("Status Code: " + unmarshalled.getStatus());
+        }
         if (Debugger.isEnabled()){
             System.out.println("Message ID: " + fromByteArray(messageIdBytes));
             System.out.println("Protocol Version: " + protocolVersion);
@@ -129,15 +138,27 @@ public class PacketMarshaller {
             System.out.println("Checksum: " + bytesToHex(checksum));
         }
 
-        return response;
+        return unmarshalled;
     }
     // Verify checksum
     private boolean isChecksumValid(byte[] calculatedChecksum, byte[] receivedChecksum) {
         return ByteBuffer.wrap(calculatedChecksum).equals(ByteBuffer.wrap(receivedChecksum));
     }
+    //Construct Unmarshalled Payload
+    private static UnmarshalledPacket createUnmarshalledPacketFromPayload(byte[] payload){
+        ByteBuffer buffer = ByteBuffer.wrap(payload);
+        System.out.println("Payload Length: " + payload.length);
+        System.out.println("Payload: " + bytesToHex(payload));
+        byte[] originalMsgIdBytes = new byte[16];
+        buffer.get(originalMsgIdBytes);
+        UUID originalUUID = fromByteArray(originalMsgIdBytes);
+        short statusCodeBytes = buffer.getShort();
+        int statusCode = statusCodeBytes;
+        return new UnmarshalledPacket(originalUUID,statusCode,payload);
+    }
 
     // Convert byte array to UUID
-    private UUID fromByteArray(byte[] byteArray) {
+    private static UUID fromByteArray(byte[] byteArray) {
         ByteBuffer buffer = ByteBuffer.wrap(byteArray);
         long mostSigBits = buffer.getLong();
         long leastSigBits = buffer.getLong();
