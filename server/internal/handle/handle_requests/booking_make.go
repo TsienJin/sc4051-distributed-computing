@@ -31,6 +31,7 @@ func BookingMake(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 	if err := manager.NewBooking(p.Name, booking); err != nil {
 		slog.Error("Unable to make booking", "err", err)
 		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusBadRequest, err.Error()))
+		return
 	}
 
 	slog.Info("Booking has been made", "BookingId", fmt.Sprintf("%v", booking.Id))
