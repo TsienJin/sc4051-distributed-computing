@@ -6,6 +6,15 @@ tasks:
   ## Local Entry Points
   ##################################
 
+  ### Start client TUI
+  client:
+    desc: "Run Go TUI client"
+    cmds:
+      - go run ./cmd/client.go --host {{.host}} --port {{.port}}
+    vars:
+      host: "{{.host | default `sc4051.tail44d0d9.ts.net` }}"
+      port: "{{.port | default `8765` }}"
+
   ### Run sanity entry point
   sanity:
     desc: "Run sanity entry point"

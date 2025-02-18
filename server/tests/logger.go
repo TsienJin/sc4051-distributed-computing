@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 )
@@ -63,6 +64,14 @@ func NewTestLogger() *slog.Logger {
 
 func NewNamedTestLogger(name string) *slog.Logger {
 	textHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	prefixedHandler := NewPrefixedLoggerHandler(textHandler, fmt.Sprintf("TEST|%s", name))
+	return slog.New(prefixedHandler)
+}
+
+func NewNamedTestLoggerWithOutputShim(name string, shim io.Writer) *slog.Logger {
+	textHandler := slog.NewTextHandler(shim, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
 	prefixedHandler := NewPrefixedLoggerHandler(textHandler, fmt.Sprintf("TEST|%s", name))

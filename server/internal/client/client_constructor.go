@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"reflect"
 	"server/internal/protocol/proto_defs"
@@ -43,6 +44,12 @@ func WithClientName(name string) NewClientOpt {
 func WithTimeout(t time.Duration) NewClientOpt {
 	return func(c *Client) {
 		c.Ctx, c.Cancel = context.WithTimeout(c.Ctx, t)
+	}
+}
+
+func WithCustomLogger(logger *slog.Logger) NewClientOpt {
+	return func(c *Client) {
+		c.logger = logger
 	}
 }
 
