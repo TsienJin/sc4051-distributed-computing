@@ -31,13 +31,13 @@ class PacketMarshallerTest {
                 (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                 (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
         };
-        PacketMarshaller marshaller = new PacketMarshaller();
+        PacketUnmarshaller marshaller = new PacketUnmarshaller();
         marshaller.unmarshalResponse(target);
     }
     @Test
     void testUnmarshalResponseWithExampleResponse() {
         // Arrange
-        PacketMarshaller marshaller = new PacketMarshaller();
+        PacketUnmarshaller marshaller = new PacketUnmarshaller();
 
         // Provided byte array
         byte[] target = new byte[]{
