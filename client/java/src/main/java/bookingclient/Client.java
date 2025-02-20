@@ -94,7 +94,7 @@ class DeleteFacilityState implements ClientState{
         System.out.println("Deleting Facility Name " + facility);
         byte[] packet = PacketMarshaller.marshalDeleteFacilityRequest(facility);
         try {
-            byte[] ackpacket = client.getNetworkHandler().sendPacketWithAck(packet);
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -114,12 +114,11 @@ class QueryFacilityState implements ClientState{
         System.out.println("Querying Facility Name " + facility);
         // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
         byte[] packet = PacketMarshaller.marshalQueryFacilityRequest(facility, numberOfDays);  // Marshal the facility data
-        byte[] ackpacket = null;
         // Directly create the NetworkHandler and send the packet
         NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
         networkHandler.networkClient();
         try {
-            ackpacket = networkHandler.sendPacketWithAck(packet);  // Send packet with acknowledgment handling
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -143,12 +142,11 @@ class BookFacilityState implements ClientState{
         System.out.println("Booking Facility Name " + facility);
         // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
         byte[] packet = PacketMarshaller.marshalBookFacilityRequest(facility, startTime, endTime);  // Marshal the facility data
-        List<Packet> ackpacket = null;
         // Directly create the NetworkHandler and send the packet
         NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
         networkHandler.networkClient();
         try {
-            ackpacket = networkHandler.sendPacketWithAckAndResend(packet);  // Send packet with acknowledgment handling
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -180,12 +178,11 @@ class DeleteBookingState implements ClientState {
         System.out.println("Deleting booking with confirmation code: " + confirmationCode);
         // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
         byte[] packet = PacketMarshaller.marshalDeleteBookingRequest(confirmationCode);  // Marshal the facility data
-        byte[] ackpacket = null;
         // Directly create the NetworkHandler and send the packet
         NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
         networkHandler.networkClient();
         try {
-            ackpacket = networkHandler.sendPacketWithAck(packet);  // Send packet with acknowledgment handling
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
