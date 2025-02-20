@@ -206,6 +206,49 @@
                     combinedPayload  // 0x01, Payload (StartTime, EndTime, FacilityName)
             );
         }
+        public static byte[] marshalModifyBookFacilityRequest(int confirmationCode, int isNegativeOffset, int deltaTime) {
+            String hex = Integer.toHexString(confirmationCode);
+            // convert from string to hex
+            long unsignedLongValue = Long.parseLong(hex, 16);
+
+            // convert to int
+            int unsignedIntValue = (int) (unsignedLongValue & 0xFFFFFFFFL);
+
+            byte[] confirmationCodeBytes = new byte[2];
+            confirmationCodeBytes[0] = (byte) (unsignedIntValue >> 8);
+            confirmationCodeBytes[1] = (byte) (unsignedIntValue & 0xFF);
+
+            byte[] deltaTimeBytes = new byte[3];
+
+            // Manually shift the bits to extract the 3 least significant bytes
+            deltaTimeBytes[0] = (byte) (deltaTime >> 16);  // Most significant byte
+            deltaTimeBytes[1] = (byte) (deltaTime >> 8);   // Middle byte
+            deltaTimeBytes[2] = (byte) (deltaTime);        // Least significant byte
+
+            byte methodIdentifier = 0x12;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + confirmationCodeBytes.length + 1 + deltaTimeBytes.length);
+            buffer.put(methodIdentifier);
+            buffer.put(confirmationCodeBytes);
+
+            byte flags = 0;
+            if (isNegativeOffset == 1) {
+                flags |= (1 << 0);  // Set LSB for isNegativeOffset
+            }
+            buffer.put(flags);
+            buffer.put(deltaTimeBytes);
+
+            byte[] combinedPayload = buffer.array();
+            System.out.println(combinedPayload.length);
+
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    combinedPayload  // 0x01, Payload (Confirmation code, flags, delta hour)
+            );
+        }
         public static byte[] marshalMonitorFacility(String facility, int TTL) {
             byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
             TTL = TTL & 0xFFFFFF;
