@@ -27,6 +27,7 @@ func FacilityQuery(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 			response.WithOriginalMessageId(message.Header.MessageId),
 			response.WithStatusCode(response.StatusBadRequest),
 		))
+		return
 	}
 	slog.Info("Successfully queried facility", "FacilityName", p.Name, "Days", p.Days, "Res", r)
 	response.SendResponse(c, a, response.NewResponse(
