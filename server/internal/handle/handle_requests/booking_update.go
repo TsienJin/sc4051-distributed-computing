@@ -25,6 +25,7 @@ func BookingUpdate(c *net.UDPConn, a *net.UDPAddr, message *protocol.Message) {
 	if err != nil {
 		slog.Error("Unable to update booking", "err", err)
 		response.SendResponse(c, a, response.NewErrorResponse(message.Header.MessageId, response.StatusBadRequest, err.Error()))
+		return
 	}
 
 	// Booking has been updated
