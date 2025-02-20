@@ -12,8 +12,8 @@ public class PacketUnmarshaller {
     public static Packet unmarshalResponse(byte[] response) {
         ByteBuffer buffer = ByteBuffer.wrap(response);
         if (Debugger.isEnabled()) {
-            System.out.println("Received response: " + bytesToHex(response));
-            System.out.println(buffer.remaining());
+            System.out.println("[Debugger] Received response: " + bytesToHex(response));
+            System.out.println("[Debugger] " + buffer.remaining());
         }
 
         byte protocolVersion = buffer.get();
@@ -55,15 +55,15 @@ public class PacketUnmarshaller {
         }
 
         if (Debugger.isEnabled()) {
-            System.out.println("Message ID: " + fromByteArray(messageIdBytes));
-            System.out.println("Protocol Version: " + protocolVersion);
-            System.out.println("Message Type: " + msgType);
-            System.out.println("Packet Number: " + packetNo);
-            System.out.println("Total Packets: " + totalPackets);
-            System.out.println("Flags: " + flags);
-            System.out.println("Payload Length: " + payloadLength);
-            System.out.println("Payload: " + bytesToHex(payload));
-            System.out.println("Checksum: " + bytesToHex(checksum));
+            System.out.println("[Debugger] Message ID: " + fromByteArray(messageIdBytes));
+            System.out.println("[Debugger] Protocol Version: " + protocolVersion);
+            System.out.println("[Debugger] Message Type: " + msgType);
+            System.out.println("[Debugger] Packet Number: " + packetNo);
+            System.out.println("[Debugger] Total Packets: " + totalPackets);
+            System.out.println("[Debugger] Flags: " + flags);
+            System.out.println("[Debugger] Payload Length: " + payloadLength);
+            System.out.println("[Debugger] Payload: " + bytesToHex(payload));
+            System.out.println("[Debugger] Checksum: " + bytesToHex(checksum));
         }
         return unmarshalled;
     }

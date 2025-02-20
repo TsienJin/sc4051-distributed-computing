@@ -14,7 +14,7 @@
 
             // 2. Message ID (UUID, 128 bits / 16 bytes)
             UUID messageId = UUID.randomUUID();
-            System.out.println("Message ID: " + messageId);
+            System.out.println("[Request] Message ID: " + messageId);
             byte[] messageIdBytes = UUIDtoByteArray(messageId);
 
             // 3. Message Type (8 bits)

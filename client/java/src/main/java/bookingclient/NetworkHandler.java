@@ -147,18 +147,21 @@ public class NetworkHandler {
         long startTime = System.currentTimeMillis();
         Debugger.log("Sending packet..."+PacketMarshaller.bytesToHex(packet));
         List<Packet> responsePackets = new ArrayList<>();
+        boolean isAcknowledged = false;
         while(true){
             //Firstly, send the packet.
-            DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
-            socket.send(DatagramPacket);
-            Debugger.log("Packet sent");
-            long elapsed = System.currentTimeMillis() - startTime;
+            if (!isAcknowledged) {
+                DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
+                socket.send(DatagramPacket);
+                Debugger.log("Packet sent");
+                long elapsed = System.currentTimeMillis() - startTime;
 
-            if(elapsed>TIMEOUT_MS){
-                throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                if (elapsed > TIMEOUT_MS) {
+                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                }
+
+                socket.setSoTimeout(TIMEOUT_MS);
             }
-
-            socket.setSoTimeout(TIMEOUT_MS);
 
             try{
                 byte[] packetBuffer = new byte[1024];
@@ -171,6 +174,7 @@ public class NetworkHandler {
                 PacketType recievedType = PacketType.fromCode(receivedPacket.messageType());
                 if(recievedType == PacketType.ACK){
                     Debugger.log("Recieved AcK packet");
+                    isAcknowledged = true;
                     continue;
                 }
                 else if (recievedType == PacketType.RESPONSE){
