@@ -9,13 +9,16 @@ import java.util.List;
 
 public class NetworkHandler {
     private static final String HOST = "100.105.193.66";
-    private static final int UDP_PORT = 8765;
+    static final int UDP_PORT = 8765;
     private static final int TIMEOUT_MS = 2000;
     private static final int MAX_RETRIES = 1;
-    private static DatagramSocket socket;
+    private DatagramSocket socket;
     private static InetAddress address;
     private static final PacketUnmarshaller unmarshaller = new PacketUnmarshaller();
-
+    // Setter for socket
+    public void setSocket(DatagramSocket socket) {
+        this.socket = socket;
+    }
     public void networkClient(){
         try {
             socket = new DatagramSocket();
