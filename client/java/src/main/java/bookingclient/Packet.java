@@ -9,4 +9,7 @@ import java.util.UUID;
 public record Packet(byte protocolVersion, UUID messageId, byte messageType, byte packetNumber, byte totalPackets,
                      byte flags, short payloadLength, byte[] payload, byte[] checksum, int status) {
 
+    byte[] getPayload() {
+        return this.payload;
+    }
 }

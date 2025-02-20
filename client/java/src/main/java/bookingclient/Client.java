@@ -147,6 +147,10 @@ class BookFacilityState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+
+            String payload = PacketMarshaller.bytesToHex(response.get(0).getPayload());
+            String bookindId = payload.substring(payload.length() - 4);
+            System.out.println("Booking ID: " + bookindId);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
