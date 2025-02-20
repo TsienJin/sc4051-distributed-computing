@@ -31,6 +31,9 @@ class MenuState implements ClientState{
             case 2:
                 client.setState(new BookFacilityState());
                 break;
+            case 3:
+                client.setState(new ModifyBookingState());
+                break;
             case 4:
                 client.setState(new MonitorFacilityState());
                 break;
@@ -191,6 +194,32 @@ class BookFacilityState implements ClientState{
         long hoursSinceUnixEpoch = currentTimeSeconds / 3600;  // 3600 seconds in an hour
 
         return hoursSinceUnixEpoch;
+    }
+}
+
+class ModifyBookingState implements ClientState{
+    @Override
+    public void handleRequest(Client client) {
+        int confirmationCode = client.getUserInputUtils().getHexInput("Modify Booking for Confirmation code:");
+        int isNegativeOffset = client.getUserInputUtils().getIntInput("Is it a negative offset (1 for yes, 0 for no)? ");
+        int deltaTime = client.getUserInputUtils().getIntInput("Enter delta hours: ");
+
+        System.out.println("Modify booking code: " + confirmationCode);
+        // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
+        byte[] packet = PacketMarshaller.marshalModifyBookFacilityRequest(confirmationCode, isNegativeOffset, deltaTime);  // Marshal the facility data
+        // Directly create the NetworkHandler and send the packet
+        NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
+        networkHandler.networkClient();
+        try {
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            System.out.println("Booking ID: " + Integer.toHexString(confirmationCode));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+//        marshaller.unmarshalResponse(ackpacket);
+
+        client.setState(new MenuState());
+        client.handleRequest();
     }
 }
 
