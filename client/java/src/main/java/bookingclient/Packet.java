@@ -12,4 +12,8 @@ public record Packet(byte protocolVersion, UUID messageId, byte messageType, byt
     byte[] getPayload() {
         return this.payload;
     }
+
+    int getStatus() {
+        return this.status;
+    }
 }

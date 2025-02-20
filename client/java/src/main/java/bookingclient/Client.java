@@ -119,6 +119,26 @@ class QueryFacilityState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            String payload = PacketMarshaller.bytesToHex(response.get(0).getPayload());
+            System.out.println("payload: " + payload);
+
+            // first 36 hex are message ID and status Code
+            String output = payload.substring(36);
+            System.out.println("output: " + output);
+
+            // TODO: when error code is 400 (facility does not exist),
+            // no error msg gets printed out in PacketUnmarshaller.unmarshalResponse()
+            int status = response.get(0).getStatus();
+            if (status == 200) {
+                System.out.println("Printing out availability");
+                for (char c : output.toCharArray()) {
+                    // Convert the character to a number
+                    int num = Character.getNumericValue(c);
+                    // Print the number in binary
+                    System.out.print(String.format("%4s", Integer.toBinaryString(num)).replace(' ', '0') + " ");
+                }
+                System.out.println();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
