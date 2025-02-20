@@ -138,4 +138,14 @@ public class PacketUnmarshaller {
         }
         return hexString.toString();
     }
+    public static String monitoredPayloadBytesToString(byte[] payload) {
+        if (payload.length > 35) {
+            byte[] LogBytes = Arrays.copyOfRange(payload, 18, payload.length);
+           String log =new String(LogBytes, StandardCharsets.UTF_8);
+           return log;
+        }
+        else{
+            return null;
+        }
+    }
 }

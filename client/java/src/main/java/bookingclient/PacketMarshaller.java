@@ -209,12 +209,12 @@
         public static byte[] marshalMonitorFacility(String facility, int TTL) {
             byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
             TTL = TTL & 0xFFFFFF;
-            byte[] ttlBytes = new byte[4];
+            byte[] ttlBytes = new byte[3];
             ttlBytes[0] = (byte) ((TTL >> 16) & 0xFF);  // Most significant byte
             ttlBytes[1] = (byte) ((TTL >> 8) & 0xFF);   // Middle byte
             ttlBytes[2] = (byte) (TTL & 0xFF);
             byte methodIdentifier = 0x03;
-            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + 4);
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + 3);
             buffer.put(methodIdentifier);
             buffer.put(ttlBytes);  // Put the TTL bytes array directly into the buffer
             buffer.put(facilityBytes);

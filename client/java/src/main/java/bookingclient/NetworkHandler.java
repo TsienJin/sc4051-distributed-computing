@@ -114,7 +114,7 @@ public class NetworkHandler {
                 socket.receive(recvPacket);  // Wait for incoming packet
 
                 byte[] receivedData = Arrays.copyOf(recvPacket.getData(), recvPacket.getLength());
-                Debugger.log("Received packet: " + PacketMarshaller.bytesToHex(receivedData));
+                Debugger.log("Received Monitored packet: " + PacketMarshaller.bytesToHex(receivedData));
 
                 Packet receivedPacket = unmarshaller.unmarshalResponse(receivedData);
                 PacketType receivedType = PacketType.fromCode(receivedPacket.messageType());
@@ -127,6 +127,7 @@ public class NetworkHandler {
                             + " of " + receivedPacket.totalPackets());
                     responsePackets.add(receivedPacket);
                     sendAckForResponse(receivedPacket);  // Send ACK for response packet
+                    Debugger.log(unmarshaller.monitoredPayloadBytesToString(receivedPacket.payload()));
                     //TODO: Add fault tolerance here, resend request
                     continue;
                 } else if (receivedType == PacketType.REQUEST_RESEND) {
@@ -135,7 +136,7 @@ public class NetworkHandler {
                 }
             } catch (SocketTimeoutException e) {
                 // Timeout waiting for a response
-                Debugger.log("Timeout while monitoring, retrying...");
+                Debugger.log("Timeout while monitoring, retrying..."+ (System.currentTimeMillis() - ttlEndTime));
                 continue;  // Retry waiting for responses
             }
         }

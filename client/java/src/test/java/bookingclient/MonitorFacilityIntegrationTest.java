@@ -12,8 +12,9 @@ public class MonitorFacilityIntegrationTest {
         // Start the first client in a separate thread that will book a facility
         Thread client1 = new Thread(() -> {
             try {
+                Thread.sleep(10); // Delay client1 to allow monitoring to start first
                 runBookingClient("Client 1 - Booking");
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
         });
@@ -29,7 +30,7 @@ public class MonitorFacilityIntegrationTest {
 
         // Start both threads
         client1.start();
-//        client2.start();
+       // client2.start();
 
         // Wait for both clients to finish their tasks
         client1.join();
@@ -38,8 +39,8 @@ public class MonitorFacilityIntegrationTest {
 
     private void runBookingClient(String clientName) throws IOException {
         String facilityName = "One";
-        int startTime = 4833210;
-        int endTime = 483311;
+        int startTime = 484000;
+        int endTime = 484100;
         String bookingDetails = facilityName + "\n" + startTime + "\n" + endTime +"\n" +"9\n";
 
         // Execute client logic
@@ -48,14 +49,14 @@ public class MonitorFacilityIntegrationTest {
         Client client = new Client(networkHandler,new ByteArrayInputStream(bookingDetails.getBytes()));
         client.setState(new BookFacilityState());
         client.handleRequest();
+        System.out.println("Client " + clientName + " successfully booked");
         return;
     }
 
     private void runMonitoringClient(String clientName) throws IOException {
-        String facilityName = "Conference Room A";
+        String facilityName = "One";
         int ttl = 60;
         String monitoringDetails = facilityName + "\n" + ttl + "\n";
-
 
         // Execute client logic
         NetworkHandler networkHandler = new NetworkHandler();
@@ -63,5 +64,7 @@ public class MonitorFacilityIntegrationTest {
         Client client = new Client(networkHandler,new ByteArrayInputStream(monitoringDetails.getBytes()));
         client.setState(new MonitorFacilityState());
         client.handleRequest();
+        System.out.println("Client " + clientName + " finished monitoring");
     }
 }
+
