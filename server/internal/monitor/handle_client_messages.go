@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"strings"
 )
 
 // HandleClientMessages is a simple function to log messages from clients into the same stream.
@@ -24,6 +25,23 @@ func HandleClientMessages(c *net.TCPConn) {
 			log.Printf("[CLIENT] Error reading from %s: %v", c.RemoteAddr().String(), err)
 			continue
 		}
+
+		// Check if message is a "command"
+		line := string(buf[:n])
+		line = strings.TrimSuffix(line, "\n")
+		if len(line) > 0 && line[0] == '/' {
+			res := ExecuteUserCommand(line)
+			if res == "" {
+				continue
+			}
+			_, err := c.Write([]byte(res + "\n"))
+			if err != nil {
+				slog.Error(fmt.Sprintf("[CLIENT:%s] Unable to write command response to user", c.RemoteAddr().String()))
+				continue
+			}
+			continue
+		}
+
 		slog.Info(fmt.Sprintf("[CLIENT:%s] %s", c.RemoteAddr().String(), string(buf[:n])))
 	}
 }
