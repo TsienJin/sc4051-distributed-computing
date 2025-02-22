@@ -21,7 +21,8 @@ class MenuState implements ClientState{
         System.out.println("6. Delete Facility");
         System.out.println("7. List Facilities");
         System.out.println("8. Delete Booking");
-        System.out.println("9. Exit");
+        System.out.println("9. Modify Booking V2");
+        System.out.println("10. Exit");
 
         int choice = client.getUserInputUtils().getIntInput("Choose an option:");
         switch (choice) {
@@ -47,6 +48,9 @@ class MenuState implements ClientState{
                 client.setState(new DeleteBookingState());
                 break;
             case 9:
+                client.setState(new ModifyBookingStateV2());
+                break;
+            case 10:
                 System.out.println("Exiting system...");
                 System.exit(0);
             default:
@@ -212,6 +216,36 @@ class ModifyBookingState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            System.out.println("Booking ID: " + Integer.toHexString(confirmationCode));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+//        marshaller.unmarshalResponse(ackpacket);
+
+        client.setState(new MenuState());
+        client.handleRequest();
+    }
+}
+
+class ModifyBookingStateV2 implements ClientState{
+    @Override
+    public void handleRequest(Client client) {
+        int confirmationCode = client.getUserInputUtils().getHexInput("Modify Booking for Confirmation code:");
+        int isNegativeOffset = client.getUserInputUtils().getIntInput("Is it a negative offset? (1 for yes, 0 for no): ");
+        int deltaTime = client.getUserInputUtils().getIntInput("Enter delta hours: ");
+
+        System.out.println("Modify booking code: " + confirmationCode);
+        // Create PacketMarshaller and NetworkHandler objects (no singleton here, just direct instantiation)
+        byte[] packet = PacketMarshaller.marshalModifyBookFacilityRequest(confirmationCode, isNegativeOffset, deltaTime);
+        byte[] packet2 = PacketMarshaller.marshalModifyBookFacilityRequest(confirmationCode, isNegativeOffset, deltaTime);
+
+        // Directly create the NetworkHandler and send the packet
+        NetworkHandler networkHandler = new NetworkHandler();  // Direct instantiation
+        networkHandler.networkClient();
+        try {
+            List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            List<Packet> response2 = client.getNetworkHandler().sendPacketWithAckAndResend(packet2);
+
             System.out.println("Booking ID: " + Integer.toHexString(confirmationCode));
         } catch (IOException e) {
             throw new RuntimeException(e);
