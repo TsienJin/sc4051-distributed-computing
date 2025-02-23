@@ -186,3 +186,16 @@ func (m *Manager) DeleteBookingFromId(id uint16) error {
 
 	return nil
 }
+
+func (m *Manager) GetDeepCopyOfRecords() map[FacilityName]*Facility {
+	m.RLock()
+	defer m.RUnlock()
+
+	res := make(map[FacilityName]*Facility)
+
+	for n, f := range m.Facilities {
+		res[n] = f.DeepCopy()
+	}
+
+	return res
+}

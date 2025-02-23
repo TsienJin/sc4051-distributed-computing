@@ -65,3 +65,11 @@ func (b *Booking) GetIdAsBytes() []byte {
 	binary.BigEndian.PutUint16(bin, b.Id)
 	return bin
 }
+
+// DeepCopy returns a new pointer to a Booking that is a deep copy of b.
+func (b *Booking) DeepCopy() *Booking {
+	if b == nil {
+		return nil
+	}
+	return &(*b)
+}
