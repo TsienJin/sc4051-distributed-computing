@@ -42,6 +42,6 @@ func HandleClientMessages(c *net.TCPConn) {
 			continue
 		}
 
-		slog.Info(fmt.Sprintf("[CLIENT:%s] %s", c.RemoteAddr().String(), string(buf[:n])))
+		slog.Info(fmt.Sprintf("[CLIENT:%s] %s", c.RemoteAddr().String(), strings.TrimSuffix(string(buf[:n]), "\n")))
 	}
 }

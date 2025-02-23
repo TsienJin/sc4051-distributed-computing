@@ -38,6 +38,19 @@ func (c *ConnectionHandler) RemoveClient(client *net.TCPConn) {
 	})
 }
 
+func (c *ConnectionHandler) RemoveClientsUnsafe(clients []*net.TCPConn) {
+	// Build a map for fast lookups.
+	clientsToRemove := make(map[*net.TCPConn]struct{}, len(clients))
+	for _, conn := range clients {
+		clientsToRemove[conn] = struct{}{}
+	}
+	// Filter out the clients to be removed
+	c.Clients = slices.DeleteFunc(c.Clients, func(conn *net.TCPConn) bool {
+		_, exists := clientsToRemove[conn]
+		return exists
+	})
+}
+
 func (c *ConnectionHandler) RemoveClients(clients []*net.TCPConn) {
 	// Build a map for fast lookups.
 	clientsToRemove := make(map[*net.TCPConn]struct{}, len(clients))
@@ -83,7 +96,7 @@ func (c *ConnectionHandler) SendMessage(s string) {
 		}(client)
 	}
 	wg.Wait()
-	c.RemoveClients(clientsToRemove)
+	c.RemoveClientsUnsafe(clientsToRemove)
 	c.RUnlock()
 
 }
