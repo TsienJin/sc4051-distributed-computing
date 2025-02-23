@@ -34,6 +34,18 @@ func GetMonitor() *Monitor {
 	return monitor
 }
 
+func (m *Monitor) Reset() {
+	m.Lock()
+	defer m.Unlock()
+	slog.Info("Terminating all monitors")
+	for _, w := range m.Watchers {
+		for _, c := range w {
+			c.Cancel()
+		}
+	}
+	m.Watchers = make(map[FacilityName][]*MonitorConsumer)
+}
+
 func (m *Monitor) Watch(f FacilityName, ttl time.Duration) *MonitorConsumer {
 
 	updateChannel := make(chan string)

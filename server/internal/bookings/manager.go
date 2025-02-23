@@ -32,6 +32,16 @@ func GetManager() *Manager {
 	return manager
 }
 
+func (m *Manager) Reset() {
+	m.Lock()
+	defer m.Unlock()
+
+	slog.Warn("Resetting Facility/Booking Manager. This will remove all existing facilities and bookings; monitor will be reset")
+
+	m.Facilities = make(map[FacilityName]*Facility)
+	m.monitor.Reset()
+}
+
 func (m *Manager) NewFacility(name FacilityName) error {
 	m.Lock()
 	defer m.Unlock()
