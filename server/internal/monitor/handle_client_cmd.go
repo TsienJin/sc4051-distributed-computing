@@ -10,10 +10,12 @@ import (
 	"github.com/spf13/pflag"
 	"log/slog"
 	"os"
+	"server/internal/bookings"
 	"server/internal/vars"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -35,7 +37,7 @@ var (
 )
 
 var (
-	tableHeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("99")).PaddingLeft(1).Bold(true).Align(lipgloss.Left)
+	tableHeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("99")).PaddingLeft(1).PaddingRight(1).Bold(true).Align(lipgloss.Left)
 	tableCellStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Padding(0, 1).Align(lipgloss.Left)
 )
 
@@ -56,7 +58,8 @@ func newTable() *table.Table {
 
 func init() {
 	// Register command hierarchy
-	rootCmd.AddCommand(helpCmd, envRootCmd, resetRootCmd, nukeRootCmd)
+	rootCmd.SetHelpCommand(helpCmd)
+	rootCmd.AddCommand(envRootCmd, recordsCmd, resetRootCmd, nukeRootCmd, networkCmd)
 
 	// Add subcommands for env
 	envRootCmd.AddCommand(envShowCmd, envSetCmd)
@@ -144,12 +147,77 @@ var rootCmd = &cobra.Command{
 }
 
 var helpCmd = &cobra.Command{
-	Use: "help",
+	Use:   "help",
+	Short: "Show help menu",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := rootCmd.Help()
 		if err != nil {
 			return
 		}
+	},
+}
+
+var recordsCmd = &cobra.Command{
+	Use:   "records",
+	Short: "Show all current facility and booking records in memory",
+	Run: func(cmd *cobra.Command, args []string) {
+
+		singaporeTimeZone := time.FixedZone("UTC+8", 8*60*60)
+
+		facilitiesTable := newTable().Headers("NAME", "NO. BOOKINGS")
+		bookingTable := newTable().Headers("FACILITY", "BOOKING ID", "START", "END")
+
+		records := bookings.GetManager().GetDeepCopyOfRecords()
+
+		for fName, f := range records {
+			facilitiesTable = facilitiesTable.Row(string(fName), fmt.Sprintf("%v", len(f.Bookings)))
+
+			for _, b := range f.Bookings {
+				bookingTable = bookingTable.Row(
+					string(fName),
+					strconv.Itoa(int(b.Id)),
+					b.Start.In(singaporeTimeZone).Format("2006-01-02 15:04:05"),
+					b.End.In(singaporeTimeZone).Format("2006-01-02 15:04:05"),
+				)
+			}
+		}
+
+		// return table
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), facilitiesTable.String()+"\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), bookingTable.String())
+
+	},
+}
+
+var networkCmd = &cobra.Command{
+	Use:   "network",
+	Short: "Show network statistics",
+	Run: func(cmd *cobra.Command, args []string) {
+		stats := getNetworkStats()
+
+		var inDropPercentage float64 = 0
+		var outDropPercentage float64 = 0
+
+		if stats.packetInExpected != 0 {
+			inDropPercentage = 100 * (float64(stats.packetInDropped) / (float64(stats.packetInExpected)))
+		}
+		if stats.packetOutExpected != 0 {
+			outDropPercentage = 100 * (float64(stats.packetOutDropped) / (float64(stats.packetOutExpected)))
+		}
+
+		t := newTable().
+			Headers("DIRECTION", "EXPECTED", "DROPPED").
+			Row(
+				"IN",
+				strconv.Itoa(stats.packetInExpected),
+				fmt.Sprintf("%d\t(%.2f PERCENT)", stats.packetInDropped, inDropPercentage),
+			).
+			Row(
+				"OUT",
+				strconv.Itoa(stats.packetOutExpected),
+				fmt.Sprintf("%d\t(%.2f PERCENT)", stats.packetOutDropped, outDropPercentage),
+			)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.String())
 	},
 }
 
@@ -276,7 +344,8 @@ var resetAllCmd = &cobra.Command{
 	Use:   "all",
 	Short: "Resets bookings, facilities, and network stats",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		bookings.GetMonitor().Reset()
+		resetNetworkMonitor()
 	},
 }
 
@@ -284,7 +353,7 @@ var resetRecordsCmd = &cobra.Command{
 	Use:   "records",
 	Short: "Resets bookings and facilities",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		bookings.GetMonitor().Reset()
 	},
 }
 
@@ -292,13 +361,13 @@ var resetNetCmd = &cobra.Command{
 	Use:   "net",
 	Short: "Resets network stats",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		resetNetworkMonitor()
 	},
 }
 
 var nukeRootCmd = &cobra.Command{
 	Use:   "nuke",
-	Short: "Triggers a server panic",
+	Short: "Triggers the server to exit (will restart when using restart policy in Docker)",
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.Warn("THIS WAS AN EXPECTED OS.EXIT(1), TRIGGERED FROM `handle_client_cmd.nukeRootCmd`")
 		os.Exit(1)
