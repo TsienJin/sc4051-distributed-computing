@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"server/internal/chance"
+	"server/internal/monitor"
 	"server/internal/network"
 	"server/internal/pools"
 	"server/internal/protocol"
@@ -27,8 +28,12 @@ func IncomingPacket(
 		return
 	}
 
+	// Mark incoming packet
+	monitor.MarkPacketIn()
+
 	// Drop Chance
 	if chance.DropPacket() {
+		monitor.MarkPacketInDropped()
 		slog.Warn(fmt.Sprintf("[IN:DROP] %d from %s", nBytes, addr.String()))
 		return
 	}

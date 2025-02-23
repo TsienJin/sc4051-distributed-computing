@@ -181,3 +181,35 @@ func (f *Facility) DeleteBooking(id uint16) bool {
 
 	return deleted
 }
+
+// DeepCopy creates a deep copy of a Facility instance.
+func (f *Facility) DeepCopy() *Facility {
+	// Acquire the read lock to safely read from f. (Do this if the Facility may be modified concurrently.)
+	f.RLock()
+	defer f.RUnlock()
+
+	// Create a new Facility. The embedded RWMutex is not copied; a new zero-value mutex is used.
+	copyFacility := &Facility{
+		Name:       f.Name,
+		Bookings:   make([]*Booking, len(f.Bookings)),
+		BookingMap: make(map[uint16]*Booking, len(f.BookingMap)),
+	}
+
+	// Deep copy the Bookings slice.
+	for i, booking := range f.Bookings {
+		if booking != nil {
+			copyFacility.Bookings[i] = booking.DeepCopy()
+		}
+	}
+
+	// Deep copy the BookingMap. You may choose to use the already-copied bookings
+	// from the slice if the same instances should be used.
+	// Here we deeply copy independently.
+	for id, booking := range f.BookingMap {
+		if booking != nil {
+			copyFacility.BookingMap[id] = booking.DeepCopy()
+		}
+	}
+
+	return copyFacility
+}
