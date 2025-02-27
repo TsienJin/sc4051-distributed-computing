@@ -126,6 +126,10 @@ class QueryFacilityState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                return;
+            }
             String payload = PacketMarshaller.bytesToHex(response.get(0).getPayload());
             System.out.println("payload: " + payload);
 

@@ -10,8 +10,8 @@ import java.util.List;
 public class NetworkHandler {
     private static final String HOST = "100.105.193.66";
     static final int UDP_PORT = 8765;
-    private static final int TIMEOUT_MS = 2000;
-    private static final int MAX_RETRIES = 1;
+    private static final int TIMEOUT_MS = 4000;
+    private static final int MAX_RETRIES = 3;
     private DatagramSocket socket;
     private static InetAddress address;
     private static final PacketUnmarshaller unmarshaller = new PacketUnmarshaller();
@@ -152,16 +152,18 @@ public class NetworkHandler {
         Debugger.log("Sending packet..."+PacketMarshaller.bytesToHex(packet));
         List<Packet> responsePackets = new ArrayList<>();
         boolean isAcknowledged = false;
+        boolean isSent = false;
         while(true){
             //Firstly, send the packet.
-            if (!isAcknowledged) {
+            if (!isAcknowledged || (isAcknowledged && !isSent)) {
                 DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
                 socket.send(DatagramPacket);
                 Debugger.log("Packet sent");
                 long elapsed = System.currentTimeMillis() - startTime;
 
                 if (elapsed > TIMEOUT_MS) {
-                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                    System.out.println("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+//                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
                 }
 
                 socket.setSoTimeout(TIMEOUT_MS);
@@ -186,6 +188,7 @@ public class NetworkHandler {
                             + " of " + receivedPacket.totalPackets());
                     responsePackets.add(receivedPacket);
                     sendAckForResponse(receivedPacket);
+                    isSent = true;
                     if (responsePackets.size() == receivedPacket.totalPackets()){
                         responsePackets.sort(Comparator.comparingInt(Packet::packetNumber));
                         return responsePackets;
@@ -199,9 +202,12 @@ public class NetworkHandler {
             }catch (SocketTimeoutException e){
                 //No packets
                 retries++;
+                isSent = false;
                 Debugger.log("Timeout waiting for response, retrying attempt " + retries);
                 if(retries>=MAX_RETRIES){
-                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                    System.out.println("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                    return responsePackets;
+//                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
                 }
                 backoffDelay(retries);
                 continue;
