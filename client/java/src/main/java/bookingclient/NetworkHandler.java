@@ -146,30 +146,20 @@ public class NetworkHandler {
         return responsePackets;  // Return all received packets within the TTL period
     }
     public List<Packet> sendPacketWithAckAndResend(byte[] packet) throws IOException {
-        //This function sends a packet and waits for an acknowledgement and response.
         int retries = 0;
         long startTime = System.currentTimeMillis();
-        Debugger.log("Sending packet..."+PacketMarshaller.bytesToHex(packet));
+        Debugger.log("Sending packet..." + PacketMarshaller.bytesToHex(packet));
         List<Packet> responsePackets = new ArrayList<>();
         boolean isAcknowledged = false;
-        boolean isSent = false;
-        while(true){
-            //Firstly, send the packet.
-            if (!isAcknowledged || (isAcknowledged && !isSent)) {
-                DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
-                socket.send(DatagramPacket);
-                Debugger.log("Packet sent");
-                long elapsed = System.currentTimeMillis() - startTime;
 
-                if (elapsed > TIMEOUT_MS) {
-                    System.out.println("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
-//                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
-                }
+        // Initial send - we always start by sending the packet
+        DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
+        socket.send(datagramPacket);
+        Debugger.log("Packet sent");
+        socket.setSoTimeout(TIMEOUT_MS);
 
-                socket.setSoTimeout(TIMEOUT_MS);
-            }
-
-            try{
+        while (true) {
+            try {
                 byte[] packetBuffer = new byte[1024];
                 DatagramPacket recvPacket = new DatagramPacket(packetBuffer, packetBuffer.length);
                 socket.receive(recvPacket);
@@ -177,43 +167,47 @@ public class NetworkHandler {
                 Debugger.log("Received packet: " + PacketMarshaller.bytesToHex(receivedData));
 
                 Packet receivedPacket = unmarshaller.unmarshalResponse(receivedData);
-                PacketType recievedType = PacketType.fromCode(receivedPacket.messageType());
-                if(recievedType == PacketType.ACK){
-                    Debugger.log("Recieved AcK packet");
+                PacketType receivedType = PacketType.fromCode(receivedPacket.messageType());
+
+                if (receivedType == PacketType.ACK) {
+                    Debugger.log("Received ACK packet");
                     isAcknowledged = true;
-                    continue;
                 }
-                else if (recievedType == PacketType.RESPONSE){
+                else if (receivedType == PacketType.RESPONSE) {
                     Debugger.log("Received RESPONSE packet " + receivedPacket.packetNumber()
                             + " of " + receivedPacket.totalPackets());
                     responsePackets.add(receivedPacket);
                     sendAckForResponse(receivedPacket);
-                    isSent = true;
-                    if (responsePackets.size() == receivedPacket.totalPackets()){
+
+                    if (responsePackets.size() == receivedPacket.totalPackets()) {
                         responsePackets.sort(Comparator.comparingInt(Packet::packetNumber));
                         return responsePackets;
                     }
-                    continue;
                 }
-                else if (recievedType == PacketType.REQUEST_RESEND){
-                    Debugger.log("Resend packet recieved. This should not happen.");
-                    continue;
+                else if (receivedType == PacketType.REQUEST_RESEND) {
+                    Debugger.log("Resend packet received. This should not happen.");
+                    // Resend the original packet
+                    socket.send(datagramPacket);
                 }
-            }catch (SocketTimeoutException e){
-                //No packets
+            } catch (SocketTimeoutException e) {
                 retries++;
-                isSent = false;
                 Debugger.log("Timeout waiting for response, retrying attempt " + retries);
-                if(retries>=MAX_RETRIES){
+
+                if (retries >= MAX_RETRIES) {
                     System.out.println("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
                     return responsePackets;
-//                    throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
                 }
+
+                // Only resend if we haven't received an ACK yet or if we got an ACK but no response after timeout
+                if (!isAcknowledged || (isAcknowledged && responsePackets.isEmpty())) {
+                    socket.send(datagramPacket);
+                    Debugger.log("Resending packet");
+                }
+
                 backoffDelay(retries);
-                continue;
+                socket.setSoTimeout(TIMEOUT_MS);
             }
         }
-
     }
     // Helper method to send back an ACK constructed from a response
     private void sendAckForResponse(Packet responsePacket) throws IOException {
