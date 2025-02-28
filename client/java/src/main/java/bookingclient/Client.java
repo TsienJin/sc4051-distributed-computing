@@ -68,6 +68,12 @@ class MonitorFacilityState implements ClientState{
         byte[] packet = PacketMarshaller.marshalMonitorFacility(facility, numberOfSeconds);
         try {
             List<Packet> response = client.getNetworkHandler().sendMonitorFacilityPacket(packet, numberOfSeconds);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -84,6 +90,12 @@ class CreateFacilityState implements ClientState {
         byte[] packet = PacketMarshaller.marshalCreateFacilityRequest(facility);
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -102,6 +114,12 @@ class DeleteFacilityState implements ClientState{
         byte[] packet = PacketMarshaller.marshalDeleteFacilityRequest(facility);
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -128,6 +146,8 @@ class QueryFacilityState implements ClientState{
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
             if (response.size() == 0) {
                 System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
                 return;
             }
             String payload = PacketMarshaller.bytesToHex(response.get(0).getPayload());
@@ -153,11 +173,6 @@ class QueryFacilityState implements ClientState{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-//        marshaller.unmarshalResponse(ackpacket);
-        // After processing, return to MenuState
-        client.setState(new MenuState());
-        client.handleRequest();
-
         client.setState(new MenuState());
         client.handleRequest();
     }
@@ -178,6 +193,12 @@ class BookFacilityState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
 
             String payload = PacketMarshaller.bytesToHex(response.get(0).getPayload());
             String bookindId = payload.substring(payload.length() - 4);
@@ -185,8 +206,6 @@ class BookFacilityState implements ClientState{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-//        marshaller.unmarshalResponse(ackpacket);
-
         client.setState(new MenuState());
         client.handleRequest();
     }
@@ -220,11 +239,17 @@ class ModifyBookingState implements ClientState{
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
+
             System.out.println("Booking ID: " + Integer.toHexString(confirmationCode));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-//        marshaller.unmarshalResponse(ackpacket);
 
         client.setState(new MenuState());
         client.handleRequest();
@@ -250,11 +275,17 @@ class ModifyBookingStateV2 implements ClientState{
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
             List<Packet> response2 = client.getNetworkHandler().sendPacketWithAckAndResend(packet2);
 
+            if (response.size() == 0 || response2.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
+
             System.out.println("Booking ID: " + Integer.toHexString(confirmationCode));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-//        marshaller.unmarshalResponse(ackpacket);
 
         client.setState(new MenuState());
         client.handleRequest();
@@ -274,14 +305,15 @@ class DeleteBookingState implements ClientState {
         networkHandler.networkClient();
         try {
             List<Packet> response = client.getNetworkHandler().sendPacketWithAckAndResend(packet);
+            if (response.size() == 0) {
+                System.out.println("network error");
+                client.setState(new MenuState());
+                client.handleRequest();
+                return;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-//        marshaller.unmarshalResponse(ackpacket);
-        // After processing, return to MenuState
-        client.setState(new MenuState());
-        client.handleRequest();
-
         client.setState(new MenuState());
         client.handleRequest();
     }
