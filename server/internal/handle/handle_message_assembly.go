@@ -215,7 +215,7 @@ func (m *MessageAssembler) AssembleMessageFromPacket(c *net.UDPConn, a *net.UDPA
 	ident := protocol.ExtractIdentFromPacket(p)
 
 	// Check if the message has already been completed (prevents duplicate messages)
-	if _, exists := m.Complete[ident]; exists {
+	if _, exists := m.Complete[ident]; exists && vars.GetStaticEnv().EnableDuplicateFiltering {
 		slog.Info("Message has already been assembled and handed off, resending cached response", "MessageId", p.Header.MessageId)
 		res, err := response.GetResponseHistoryInstance().GetResponse(p.Header.MessageId)
 		if err != nil {
