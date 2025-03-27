@@ -6,6 +6,7 @@ import (
 	"server/internal/protocol"
 	"server/internal/rpc/request"
 	"server/internal/rpc/response"
+	"server/internal/vars"
 )
 
 func Sort(c *net.UDPConn, a *net.UDPAddr, m *protocol.Message) {
@@ -13,7 +14,7 @@ func Sort(c *net.UDPConn, a *net.UDPAddr, m *protocol.Message) {
 	h := response.GetResponseHistoryInstance()
 
 	// Check if message has been processed or is processing
-	if done, exists := h.Check(m.Header.MessageId); exists {
+	if done, exists := h.Check(m.Header.MessageId); exists && vars.GetStaticEnv().EnableDuplicateFiltering {
 		if !done {
 			slog.Info("Request is supposed to invoke a processes that is still running, ignoring duplicate")
 			return

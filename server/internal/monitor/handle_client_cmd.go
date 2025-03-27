@@ -21,6 +21,8 @@ import (
 var (
 	mu sync.RWMutex // To ensure that commands are executed mutually.
 
+	envEnableDuplicateFiltering  bool
+	envDisableDuplicateFiltering bool
 	envPacketDropRate            float32
 	envPacketReceiveTimeout      int
 	envPacketTTL                 int
@@ -28,6 +30,8 @@ var (
 	envResponseTTL               int
 	envResponseIntervals         int
 
+	flagEnableDuplicateFiltering  string = "enable-duplicate-filtering"
+	flagDisableDuplicateFiltering string = "disable-duplicate-filtering"
 	flagPacketDropRate            string = "packet-drop-rate"
 	flagPacketReceiveTimeout      string = "packet-receive-timeout"
 	flagPacketTTL                 string = "packet-ttl"
@@ -57,12 +61,18 @@ func newTable() *table.Table {
 }
 
 func init() {
+	register()
+}
+
+func register() {
 	// Register command hierarchy
 	rootCmd.SetHelpCommand(helpCmd)
 	rootCmd.AddCommand(envRootCmd, recordsCmd, resetRootCmd, nukeRootCmd, networkCmd)
 
 	// Add subcommands for env
 	envRootCmd.AddCommand(envShowCmd, envSetCmd)
+	envSetCmd.Flags().BoolVar(&envEnableDuplicateFiltering, flagEnableDuplicateFiltering, true, "Enable duplicate packet/message filtering")
+	envSetCmd.Flags().BoolVar(&envDisableDuplicateFiltering, flagDisableDuplicateFiltering, false, "Disable duplicate packet/message filtering")
 	envSetCmd.Flags().Float32Var(&envPacketDropRate, flagPacketDropRate, 0.0, "Set the network drop rate value")
 	envSetCmd.Flags().IntVar(&envPacketReceiveTimeout, flagPacketReceiveTimeout, 0, "Set packet receive timeout (ms)")
 	envSetCmd.Flags().IntVar(&envPacketTTL, flagPacketTTL, 0, "Set packet TTL (ms)")
@@ -79,6 +89,7 @@ func ExecuteUserCommand(line string) string {
 	defer mu.Unlock()
 
 	// reset flags to make sure next execution is "fresh"
+	// TODO: subcommand help flag is not reset. DO NOT USE --help in subcommands
 	defer func() {
 		reset := func(cmd *cobra.Command) {
 			cmd.Flags().VisitAll(func(f *pflag.Flag) {
@@ -104,6 +115,7 @@ func ExecuteUserCommand(line string) string {
 		} {
 			reset(c)
 		}
+
 	}()
 
 	// Ensure that line has leading '/'
@@ -241,6 +253,7 @@ var envShowCmd = &cobra.Command{
 		t := newTable()
 		t = t.Headers("ENV VAR", "VALUE")
 		t = t.Rows([][]string{
+			{"EnableDuplicateFiltering", fmt.Sprintf("%v", envVars.EnableDuplicateFiltering)},
 			{"PacketDropRate", fmt.Sprintf("%v", envVars.PacketDropRate)},
 			{"PacketReceiveTimeout", fmt.Sprintf("%v", envVars.PacketReceiveTimeout)},
 			{"PacketTTL", fmt.Sprintf("%v", envVars.PacketTTL)},
@@ -274,6 +287,16 @@ var envSetCmd = &cobra.Command{
 				return
 			}
 			switch f.Name {
+			case "enable-duplicate-filtering":
+				err := vars.SetEnableDuplicateFiltering(envEnableDuplicateFiltering)
+				if err != nil {
+					sendErrToBuffer(err)
+				}
+			case "disable-duplicate-filtering":
+				err := vars.SetEnableDuplicateFiltering(!envDisableDuplicateFiltering)
+				if err != nil {
+					sendErrToBuffer(err)
+				}
 			case "packet-drop-rate":
 				floatVal, err := strconv.ParseFloat(f.Value.String(), 32)
 				if err != nil {

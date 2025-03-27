@@ -10,9 +10,6 @@ import (
 
 func SendResponse(c *net.UDPConn, a *net.UDPAddr, r *Response) {
 
-	// Set response in history
-	GetResponseHistoryInstance().AddResponse(r)
-
 	// Create response message
 	message, err := protocol.NewMessage(
 		&protocol.PacketHeaderDistilled{
@@ -39,5 +36,8 @@ func SendResponse(c *net.UDPConn, a *net.UDPAddr, r *Response) {
 			slog.Error("Unable to send response message packet", "err", err)
 		}
 	}
+
+	// Set response in history
+	GetResponseHistoryInstance().AddResponse(r)
 
 }
