@@ -5,7 +5,9 @@ public class Debugger {
         return true;
     }
     public static void log(Object o){
-        System.out.println(o.toString());
+        if(isEnabled()){
+            System.out.println(o.toString());
+        }
     }
 
 }

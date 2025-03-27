@@ -12,8 +12,8 @@ public class PacketUnmarshaller {
     public static Packet unmarshalResponse(byte[] response) {
         ByteBuffer buffer = ByteBuffer.wrap(response);
         if (Debugger.isEnabled()) {
-            System.out.println("[Debugger] Received response: " + bytesToHex(response));
-            System.out.println("[Debugger] " + buffer.remaining());
+            Debugger.log("[Debugger] Received response: " + bytesToHex(response));
+            Debugger.log("[Debugger] " + buffer.remaining());
         }
 
         byte protocolVersion = buffer.get();
@@ -36,9 +36,9 @@ public class PacketUnmarshaller {
         if (isChecksumValid(
                 calculateChecksum(protocolVersion, messageIdBytes, msgType, packetNo, totalPackets, flags, payloadLength, payload),
                 checksum)) {
-            System.out.println("Checksum is valid");
+            Debugger.log("Checksum is valid");
         } else {
-            System.out.println("Checksum is invalid");
+            Debugger.log("Checksum is invalid");
         }
 
         Packet unmarshalled = createUnmarshalledPacket(protocolVersion, messageIdBytes, msgType, packetNo, totalPackets, flags, payloadLength, payload, checksum);
@@ -49,9 +49,9 @@ public class PacketUnmarshaller {
                 byte[] errorTextBytes = Arrays.copyOfRange(payload, 18, payloadLength);
                 System.out.println("Error Text: " + new String(errorTextBytes, StandardCharsets.UTF_8));
             }
-            System.out.println("Error Code: " + unmarshalled.status());
+            Debugger.log("Error Code: " + unmarshalled.status());
         } else {
-            System.out.println("Status Code: " + unmarshalled.status());
+            Debugger.log("Status Code: " + unmarshalled.status());
         }
 
         if (Debugger.isEnabled()) {

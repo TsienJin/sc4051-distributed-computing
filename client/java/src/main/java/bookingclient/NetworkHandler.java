@@ -10,8 +10,11 @@ import java.util.List;
 public class NetworkHandler {
     private static final String HOST = "100.105.193.66";
     static final int UDP_PORT = 8765;
-    private static final int TIMEOUT_MS = 4000;
+    private static final int TIMEOUT_MS = 1000;
     private static final int MAX_RETRIES = 3;
+
+    private int maxRetries = 3; // default
+
     private DatagramSocket socket;
     private static InetAddress address;
     private static final PacketUnmarshaller unmarshaller = new PacketUnmarshaller();
@@ -19,6 +22,10 @@ public class NetworkHandler {
     public void setSocket(DatagramSocket socket) {
         this.socket = socket;
     }
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
     public void networkClient(){
         try {
             socket = new DatagramSocket();
@@ -28,30 +35,6 @@ public class NetworkHandler {
         }
     }
 
-    public byte[] sendPacketWithAck(byte[] packet) throws IOException {
-        //This function sends a packet and waits for an acknowledgement and response.
-        DatagramPacket DatagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
-        byte[] ackBuffer = new byte[1024];
-        DatagramPacket ackPacket = new DatagramPacket(ackBuffer, ackBuffer.length);
-        int retries = 0;
-        while (retries < MAX_RETRIES) {
-            try {
-                System.out.println(bytesToHex(DatagramPacket.getData()));
-                socket.send(DatagramPacket);
-                socket.receive(ackPacket);
-                System.out.println("ack time" + bytesToHex(ackPacket.getData()));
-                socket.receive(ackPacket);
-                System.out.println("second time" + bytesToHex(ackPacket.getData()));
-                return ackPacket.getData();
-            } catch (IOException e) {
-                retries++;
-                System.out.println("Failed to send packet, retrying...");
-            }
-        }
-
-        throw new IOException("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
-
-    }
     public List<Packet> sendMonitorFacilityPacket(byte[] packet, int ttl) throws IOException {
         int retries = 0;
         long startTime = System.currentTimeMillis();
@@ -94,9 +77,9 @@ public class NetworkHandler {
                 }
             } catch (SocketTimeoutException e) {
                 retries++;
-                Debugger.log("Timeout waiting for ACK or RESPONSE, retrying attempt " + retries);
-                if (retries >= MAX_RETRIES) {
-                    throw new IOException("Failed to receive ACK or RESPONSE after " + MAX_RETRIES + " retries.");
+                System.out.println("Timeout waiting for ACK or RESPONSE, retrying attempt " + retries);
+                if (maxRetries >= 0 && retries >= maxRetries) {
+                    throw new IOException("Failed to receive ACK or RESPONSE after " + maxRetries + " retries.");
                 }
                 backoffDelay(retries);  // Exponential backoff for retries
                 socket.send(datagramPacket);  // Resend the monitoring packet
@@ -191,20 +174,19 @@ public class NetworkHandler {
                 }
             } catch (SocketTimeoutException e) {
                 retries++;
-                Debugger.log("Timeout waiting for response, retrying attempt " + retries);
+                System.out.println("Timeout waiting for response, retrying attempt " + retries);
 
-                if (retries >= MAX_RETRIES) {
-                    System.out.println("Failed to send packet after " + MAX_RETRIES + " retry attempts.");
+                if (maxRetries >= 0 && retries >= maxRetries) {
+                    System.out.println("Failed to send packet after " + maxRetries + " retry attempts.");
                     return responsePackets;
                 }
 
-                // Only resend if we haven't received an ACK yet or if we got an ACK but no response after timeout
                 if (!isAcknowledged || (isAcknowledged && responsePackets.isEmpty())) {
                     socket.send(datagramPacket);
                     Debugger.log("Resending packet");
                 }
 
-                backoffDelay(retries);
+                backoffDelay(maxRetries);
                 socket.setSoTimeout(TIMEOUT_MS);
             }
         }
@@ -236,10 +218,9 @@ public class NetworkHandler {
         return hexString.toString();
     }
     private void backoffDelay(int retryCount) {
-        //Helper function to introduce backoffDelay to simulate server down time
         try {
-            // Base delay: 100ms multiplied by 2^retryCount.
-            long baseDelay = 100 * (long) Math.pow(2, retryCount);
+            int magnitude = Math.min(retryCount, 3);
+            long baseDelay = 10 * (long) Math.pow(2, magnitude);
 
             // Random factor between 0.8 and 1.2.
             double randomFactor = 0.8 + Math.random() * 0.4;

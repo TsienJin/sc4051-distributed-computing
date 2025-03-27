@@ -99,7 +99,6 @@ class CreateFacilityState implements ClientState {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
         // After processing, return to MenuState
         client.setState(new MenuState());
         client.handleRequest();
@@ -123,7 +122,7 @@ class DeleteFacilityState implements ClientState{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
+        System.out.println("Deleted Facility Name " + facility);
         // After processing, return to MenuState
         client.setState(new MenuState());
         client.handleRequest();
