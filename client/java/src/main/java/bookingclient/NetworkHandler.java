@@ -11,7 +11,6 @@ public class NetworkHandler {
     private static final String HOST = "100.105.193.66";
     static final int UDP_PORT = 8765;
     private static final int TIMEOUT_MS = 1000;
-    private static final int MAX_RETRIES = 3;
 
     private int maxRetries = 3; // default
 
@@ -181,12 +180,12 @@ public class NetworkHandler {
                     return responsePackets;
                 }
 
-                if (!isAcknowledged || (isAcknowledged && responsePackets.isEmpty())) {
+                if (!isAcknowledged) {
                     socket.send(datagramPacket);
                     Debugger.log("Resending packet");
                 }
 
-                backoffDelay(maxRetries);
+                backoffDelay(retries);
                 socket.setSoTimeout(TIMEOUT_MS);
             }
         }
@@ -220,13 +219,13 @@ public class NetworkHandler {
     private void backoffDelay(int retryCount) {
         try {
             int magnitude = Math.min(retryCount, 3);
-            long baseDelay = 10 * (long) Math.pow(2, magnitude);
+            long baseDelay = 50 * (long) Math.pow(2, magnitude);
 
             // Random factor between 0.8 and 1.2.
             double randomFactor = 0.8 + Math.random() * 0.4;
 
             // Apply the random factor to the base delay.
-            long delay = (long) (baseDelay * randomFactor);
+            long delay = (long) (baseDelay * randomFactor + 100);
             Debugger.log("Delaying for " + delay + "ms before retrying...");
             Thread.sleep(delay);
         } catch (InterruptedException e) {
