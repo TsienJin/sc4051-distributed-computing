@@ -16,7 +16,7 @@ func SendPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) error {
 	// Chance event to drop sent packet
 	if chance.DropPacket() {
 		monitor.MarkPacketOutDropped()
-		slog.Info("[OUT:DROPPED] Dropping packet, simulated network error", "target", a.String())
+		slog.Info("[OUT:DROPPED] Dropping packet, simulated network error", "target", a.String(), "packet_type", p.Header.MessageType)
 		return nil
 	}
 
@@ -29,5 +29,7 @@ func SendPacket(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) error {
 	}
 
 	GetSendHistoryInstance().Append(c, a, p)
+
+	slog.Info("[OUT:SUCCESS] Packet was successfully sent", "target", a.String(), "packet_type", p.Header.MessageType)
 	return nil
 }

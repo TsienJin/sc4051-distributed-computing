@@ -29,8 +29,8 @@ func NewSendHistoryRecord(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) *S
 }
 
 func (s *SendHistoryRecord) ResendPacket() {
-	slog.Info("Resending packet")
 	packet := s.GetPacket()
+	slog.Info("Resending packet", "Type", packet.Header.MessageType, "Id", packet.Header.MessageId)
 	if err := SendPacket(s.Conn, s.Addr, packet); err != nil {
 		slog.Error("Unable to resend historical packet", "err", err)
 	}
