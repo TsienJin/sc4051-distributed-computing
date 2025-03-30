@@ -123,7 +123,7 @@ public class PacketUnmarshaller {
     }
 
     // Convert byte array to UUID
-    private static UUID fromByteArray(byte[] byteArray) {
+    public static UUID fromByteArray(byte[] byteArray) {
         ByteBuffer buffer = ByteBuffer.wrap(byteArray);
         long mostSigBits = buffer.getLong();
         long leastSigBits = buffer.getLong();
