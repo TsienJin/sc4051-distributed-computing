@@ -19,7 +19,7 @@ public class NetworkHandler {
     private static final String HOST = "100.105.193.66"; // Replace with actual host if needed
     static final int UDP_PORT = 8765;
     private static final int TIMEOUT_MS = 1000; // Timeout for each receive attempt
-    private static final int MAX_PACKET_SIZE = 2048; // Define max expected packet size
+    private static final int MAX_PACKET_SIZE = 1024; // Define max expected packet size
 
     // Retry Configuration
     private int maxRetries = 3; // Default max overall retries (timeouts) for a request
@@ -180,16 +180,12 @@ public class NetworkHandler {
                 // Process the valid received packet. Handles filtering, ACKing, state updates.
                 List<Packet> result = processReceivedPacket(receivedPacket, outgoingDatagram);
                 if (result != null) {
-                    // Operation complete (full success or confirmed error/timeout)
                     return result;
                 }
-                // Otherwise, null means we continue waiting/processing
 
             } catch (SocketTimeoutException e) {
-                // Handle timeout event: increment retries, check limits, potentially resend
                 List<Packet> result = handleTimeout(outgoingDatagram);
                 if (result != null) {
-                    // Operation complete (max retries hit)
                     return result;
                 }
                 // Otherwise, null means retry logic was executed, continue the loop
