@@ -578,17 +578,18 @@ public class NetworkHandler {
         }
     }
 
-    // --- Monitoring Method (Updated for Payload ID Check) ---
+    // --- Monitoring Method (Updated for Payload ID Check & Enhanced Step 2 Logging) ---
     public List<Packet> sendMonitorFacilityPacket(byte[] packet, int ttl) throws IOException {
-        initializeNetworkIfNeeded();
+        initializeNetworkIfNeeded(); // Ensure socket is ready
 
         // --- Get Monitor Request ID from its header ---
         UUID monitorRequestId;
         try {
+            // Assuming unmarshaller can parse the header part of the request packet
             Packet requestPacketHeaderView = unmarshaller.unmarshalResponse(packet); // Adjust if needed
             monitorRequestId = requestPacketHeaderView.messageId();
             if (monitorRequestId == null) {
-                throw new IOException("Failed to extract valid Message ID from outgoing monitor request packet header.");
+                throw new IOException("Failed to extract valid Message ID (UUID was null) from outgoing monitor request packet header.");
             }
             Debugger.log("Monitor Request Message ID: " + monitorRequestId);
         } catch (Exception e) {
@@ -605,75 +606,118 @@ public class NetworkHandler {
 
         Debugger.log("Sending monitoring request [MsgID: " + monitorRequestId + "]... TTL: " + ttl + "s.");
         DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, address, UDP_PORT);
-        socket.send(datagramPacket);
+        try {
+            socket.send(datagramPacket);
+        } catch (IOException sendEx) {
+            Debugger.log("ERROR: Failed to send initial monitor request: " + sendEx.getMessage());
+            throw sendEx; // Rethrow if initial send fails
+        }
         Debugger.log("Monitoring request sent. Waiting for initial ACK or Response...");
 
         boolean connectionLive = false;
 
         // Step 1: Initial check for liveness (ACK or first RESPONSE related to our monitor request)
-        while (!connectionLive && connectionRetries <= this.maxRetries) {
-            socket.setSoTimeout(TIMEOUT_MS);
+        // Use a temporary higher retry count for this crucial phase if needed, or ensure default is high enough
+        int initialMaxRetries = this.maxRetries; // Use the configured maxRetries
+        // Note: Consider setting a dedicated higher retry limit specifically for monitor connection
+        // if this.maxRetries is often low for other operations. For now, uses the global setting.
+
+        while (!connectionLive && (connectionRetries <= initialMaxRetries || initialMaxRetries < 0) ) { // Allow negative maxRetries for infinite
+            // If maxRetries is 0, loop runs once. If negative, runs indefinitely until connectionLive or error.
+            if (initialMaxRetries >= 0 && connectionRetries > initialMaxRetries) {
+                Debugger.log("Max retries (" + initialMaxRetries + ") exceeded for initial monitor check.");
+                break; // Exit loop, connectionLive is still false
+            }
+
+            socket.setSoTimeout(TIMEOUT_MS); // Use standard timeout for initial check attempts
             try {
                 byte[] packetBuffer = new byte[MAX_PACKET_SIZE];
                 DatagramPacket recvPacket = new DatagramPacket(packetBuffer, packetBuffer.length);
-                socket.receive(recvPacket);
+
+                socket.receive(recvPacket); // Wait for ACK or Response
+
                 byte[] receivedData = Arrays.copyOf(recvPacket.getData(), recvPacket.getLength());
 
-                Packet receivedPacket = unmarshaller.unmarshalResponse(receivedData);
+                Packet receivedPacket;
+                try {
+                    receivedPacket = unmarshaller.unmarshalResponse(receivedData);
+                } catch (Exception unmarshalEx) {
+                    Debugger.log("Initial Check: Error unmarshalling packet: " + unmarshalEx.getMessage() + ". Raw Data: " + PacketMarshaller.bytesToHex(receivedData) +". Ignoring.");
+                    continue; // Ignore malformed packet
+                }
+
                 PacketType receivedType = PacketType.fromCode(receivedPacket.messageType());
                 UUID respHeaderId = receivedPacket.messageId();
-                UUID origReqIdFromPayload = null; // For RESPONSE/ACK payload check
+                UUID origReqIdFromPayload = null;
 
-                Debugger.log("Received packet during initial monitor check: Type=" + receivedType + ", RespMsgID=" + respHeaderId);
-
-                if (receivedType == PacketType.ACK) {
-                    // Check if ACK payload ID matches our monitor request ID
+                if (receivedType == PacketType.ACK || receivedType == PacketType.RESPONSE) {
                     origReqIdFromPayload = extractOriginalRequestIdFromPayload(receivedPacket.payload());
-                    if (monitorRequestId.equals(origReqIdFromPayload)) {
-                        Debugger.log("Relevant ACK received for monitor request [MsgID: " + monitorRequestId + "]. Connection confirmed live.");
-                        connectionLive = true;
-                    } else {
-                        Debugger.log("Received stale ACK [OrigReqID in Payload: "+origReqIdFromPayload+"]. Ignoring.");
-                    }
+                }
+
+                Debugger.log("Initial Check Received: Type=" + receivedType + ", RespMsgID=" + respHeaderId + ", OrigReqIDPayload=" + (origReqIdFromPayload != null ? origReqIdFromPayload : "null/NA"));
+
+                boolean relevant = monitorRequestId.equals(origReqIdFromPayload);
+
+                if (receivedType == PacketType.ACK && relevant) {
+                    Debugger.log("Relevant ACK received for monitor request [MsgID: " + monitorRequestId + "]. Connection confirmed live.");
+                    connectionLive = true; // SUCCESS!
                 } else if (receivedType == PacketType.RESPONSE) {
-                    // Check if RESPONSE payload ID matches our monitor request ID
-                    origReqIdFromPayload = extractOriginalRequestIdFromPayload(receivedPacket.payload());
-                    // ACK *every* RESPONSE regardless of relevance
-                    try { sendAckForResponse(receivedPacket); } catch (Exception e) { Debugger.log("WARN: Failed ACK on initial monitor response/other: " + e.getMessage()); }
+                    // ACK *every* valid RESPONSE immediately
+                    try { sendAckForResponse(receivedPacket); } catch (Exception e) { Debugger.log("WARN: Failed ACK during initial monitor check: " + e.getMessage()); }
 
-                    if (monitorRequestId.equals(origReqIdFromPayload)) {
+                    if (relevant) {
                         Debugger.log("Initial relevant RESPONSE received for monitor request [MsgID: " + monitorRequestId + "]. Connection confirmed live.");
-                        connectionLive = true;
+                        connectionLive = true; // SUCCESS!
                         // Store this first update, track its key
                         String packetKey = respHeaderId + ":" + receivedPacket.packetNumber();
                         if(receivedUpdateKeys.add(packetKey)) {
                             responsePackets.add(receivedPacket);
                             Debugger.log("Stored initial monitored update packet #" + receivedPacket.packetNumber());
                         } else {
-                            Debugger.log("WARN: Initial relevant response was a duplicate? Key: " + packetKey); // Should be rare
+                            Debugger.log("WARN: Initial relevant response was a duplicate? Key: " + packetKey);
                         }
                     } else {
-                        Debugger.log("Received RESPONSE for different request ("+origReqIdFromPayload+") during initial monitor check. Ignoring payload, ACK sent.");
+                        Debugger.log("Received RESPONSE for different request ("+origReqIdFromPayload+") during initial check. Ignoring payload, ACK sent.");
                     }
-                } else {
-                    Debugger.log("Waiting... Received unexpected type " + receivedType + " during initial check.");
+                } else if (!relevant && receivedType == PacketType.ACK){
+                    Debugger.log("Received stale/irrelevant ACK [OrigReqID in Payload: "+origReqIdFromPayload+"]. Ignoring for liveness check.");
+                }
+                else {
+                    Debugger.log("Ignoring unexpected/irrelevant packet type " + receivedType + " during initial check.");
                 }
             } catch (SocketTimeoutException e) {
                 connectionRetries++;
-                Debugger.log("Timeout waiting for initial monitor ACK/Response (retry " + connectionRetries + "/" + this.maxRetries + ") for [MsgID: " + monitorRequestId +"]");
-                if (connectionRetries > this.maxRetries) {
-                    throw new IOException("Failed to confirm monitoring connection (no relevant ACK or RESPONSE received) for [MsgID: " + monitorRequestId + "] after " + this.maxRetries + " retries.");
+                Debugger.log("Timeout waiting for initial monitor ACK/Response (retry " + connectionRetries + "/" + (initialMaxRetries < 0 ? "inf" : initialMaxRetries) + ") for [MsgID: " + monitorRequestId +"]");
+                // Check if retries are exhausted *before* attempting resend
+                if (initialMaxRetries >= 0 && connectionRetries > initialMaxRetries) {
+                    Debugger.log("Max retries reached for initial monitor check after timeout.");
+                    break; // Exit loop
                 }
+                // Retry only if limit not hit
                 backoffDelay(connectionRetries);
-                socket.send(datagramPacket); // Resend monitor request
-                Debugger.log("Resent monitoring request [MsgID: " + monitorRequestId + "]");
-            } catch (Exception unmarshalEx) {
-                Debugger.log("Error unmarshalling packet during initial monitor check: " + unmarshalEx.getMessage() + ". Ignoring packet.");
+                try {
+                    socket.send(datagramPacket); // Resend monitor request
+                    Debugger.log("Resent monitoring request [MsgID: " + monitorRequestId + "]");
+                } catch (IOException sendEx) {
+                    Debugger.log("ERROR: Failed to resend monitor request on retry " + connectionRetries + ": " + sendEx.getMessage());
+                    // If resend fails, likely network is down, probably should give up.
+                    throw new IOException("Failed to resend monitor request after timeout.", sendEx);
+                }
+            } catch (IOException ioEx) {
+                Debugger.log("IOException during initial monitor check receive: " + ioEx.getMessage());
+                // Depending on error, maybe wait and retry or rethrow
+                connectionRetries++; // Count as a retry attempt maybe?
+                if (initialMaxRetries >= 0 && connectionRetries > initialMaxRetries) break; // Prevent infinite loop on persistent IO error
+                backoffDelay(connectionRetries); // Wait before potentially trying again
             }
-        }
+            // Catching generic Exception for unmarshalling is now handled inside the main try
 
-        // Should be caught by timeout, but safeguard
-        if (!connectionLive) throw new IOException("Failed to establish live connection for monitoring [MsgID: " + monitorRequestId + "].");
+        } // End Step 1 while loop
+
+        // Check connectionLive and throw exception *after* the loop finishes
+        if (!connectionLive) {
+            throw new IOException("Failed to establish live connection for monitoring [MsgID: " + monitorRequestId + "] after " + connectionRetries + " attempts (max_retries=" + initialMaxRetries + "). Check network connectivity and server status/drop rate.");
+        }
 
 
         // Step 2: Monitor for updates within TTL
@@ -681,24 +725,40 @@ public class NetworkHandler {
 
         while (System.currentTimeMillis() < ttlEndTime) {
             long remainingTime = ttlEndTime - System.currentTimeMillis();
-            if (remainingTime <= 0) break;
+            if (remainingTime <= 0) {
+                Debugger.log("Monitoring TTL loop terminating: Remaining time <= 0.");
+                break;
+            }
 
-            int currentTimeout = (int) Math.max(1, Math.min(remainingTime, TIMEOUT_MS));
+            // Use min 100ms timeout to avoid busy-waiting
+            int currentTimeout = (int) Math.max(100, Math.min(remainingTime, TIMEOUT_MS));
             socket.setSoTimeout(currentTimeout);
+            // Debugger.log("Monitor Step 2: Set SO_TIMEOUT to " + currentTimeout + "ms");
 
             try {
                 byte[] packetBuffer = new byte[MAX_PACKET_SIZE];
                 DatagramPacket recvPacket = new DatagramPacket(packetBuffer, packetBuffer.length);
-                socket.receive(recvPacket);
 
-                byte[] receivedData = Arrays.copyOf(recvPacket.getData(), recvPacket.getLength());
+                // -----> Try to receive <-----
+                socket.receive(recvPacket);
+                // -----> If receive() returns without exception, a packet WAS received <-----
+
+                int receivedLength = recvPacket.getLength();
+                String senderAddr = recvPacket.getAddress().getHostAddress() + ":" + recvPacket.getPort();
+                Debugger.log("Monitor Step 2: Successfully received datagram. Length=" + receivedLength + ", Sender=" + senderAddr); // Log receipt confirmation
+
+                byte[] receivedData = Arrays.copyOf(recvPacket.getData(), receivedLength);
 
                 Packet receivedPacket;
                 try {
                     receivedPacket = unmarshaller.unmarshalResponse(receivedData);
+                    Debugger.log("Monitor Step 2: Unmarshalled packet: Type=" + PacketType.fromCode(receivedPacket.messageType())
+                            + ", RespMsgID=" + receivedPacket.messageId()
+                            + ", Pkt#=" + receivedPacket.packetNumber() + "/" + receivedPacket.totalPackets());
                 } catch (Exception e) {
-                    Debugger.log("Error unmarshalling monitored packet: " + e.getMessage() + ". Ignoring.");
-                    continue;
+                    Debugger.log("Monitor Step 2: Error unmarshalling received packet (Length=" + receivedLength + ", Sender=" + senderAddr + "): " + e.getMessage()
+                            + ". Raw Data: " + PacketMarshaller.bytesToHex(receivedData) + ". Ignoring.");
+                    continue; // Skip malformed packet
                 }
 
                 PacketType receivedType = PacketType.fromCode(receivedPacket.messageType());
@@ -707,36 +767,50 @@ public class NetworkHandler {
                 if (receivedType == PacketType.RESPONSE) {
                     // Always ACK received RESPONSE packets
                     try { sendAckForResponse(receivedPacket); }
-                    catch (Exception e) { Debugger.log("WARN: Error sending ACK during monitoring for [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "]: " + e.getMessage()); }
+                    catch (IOException ackIoEx) { Debugger.log("WARN: IOException sending ACK during monitoring for [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "]: " + ackIoEx.getMessage()); }
+                    catch (Exception ackEx) { Debugger.log("WARN: Error preparing/sending ACK during monitoring for [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "]: " + ackEx.getMessage()); }
+
+                    // Log monitored payload content
+                    try {
+                        String monitoredContent = PacketUnmarshaller.monitoredPayloadBytesToString(receivedPacket.payload());
+                        if (monitoredContent != null) {
+                            Debugger.log("  Monitored Payload Content: " + monitoredContent);
+                        } else {
+                            // It's okay if payload isn't string decodable, might be binary update
+                            Debugger.log("  Monitored update payload is not simple text or format unrecognized.");
+                        }
+                    } catch (Exception payloadEx) {
+                        Debugger.log("  Error reading monitored payload content: " + payloadEx.getMessage());
+                    }
 
                     // Store if unique (based on *response* header ID and packet number)
                     String packetKey = respHeaderId + ":" + receivedPacket.packetNumber();
                     if (receivedUpdateKeys.add(packetKey)) {
-                        Debugger.log("Received unique monitored update: [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "/" + receivedPacket.totalPackets() + "]");
+                        Debugger.log("Stored unique monitored update: [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "/" + receivedPacket.totalPackets() + "]");
                         responsePackets.add(receivedPacket);
-                        // Optionally log content
-                        // ... (logging content logic remains the same)
                     } else {
                         Debugger.log("Received duplicate monitored packet [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "]. Ignoring content, ACK sent.");
                     }
 
                 } else {
-                    // Ignore other packet types during monitoring phase (ACKs, REQUEST_RESEND etc.)
+                    // Ignore other packet types during active monitoring
                     Debugger.log("Ignoring packet type " + receivedType + " during monitoring phase [RespMsgID: " + respHeaderId + "].");
                 }
             } catch (SocketTimeoutException e) {
+                // This is NORMAL if no updates arrive or packets are lost
                 Debugger.log("Timeout while monitoring (waiting for updates)... Remaining time: " + remainingTime + "ms");
             } catch (IOException ioEx) {
-                Debugger.log("IOException during monitoring loop: " + ioEx.getMessage());
+                Debugger.log("IOException during monitoring loop receive: " + ioEx.getMessage());
+                // Consider if this indicates a fatal problem for monitoring, maybe break?
             } catch (Exception genEx) {
-                Debugger.log("Unexpected error during monitoring loop: " + genEx.getMessage());
+                Debugger.log("Unexpected error during monitoring loop processing: " + genEx.getMessage());
+                // Log and continue monitoring
             }
-        }
+        } // End Step 2 while loop
 
         // Step 3: TTL expired
         Debugger.log("Monitoring TTL expired for [OrigReqID: " + monitorRequestId + "]. Received " + responsePackets.size() + " unique response packets.");
         responsePackets.sort(Comparator.comparing(Packet::messageId).thenComparingInt(Packet::packetNumber));
         return responsePackets;
     }
-
 }
