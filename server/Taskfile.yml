@@ -56,4 +56,4 @@ tasks:
     desc: "Watch logs using Docker"
     dotenv: ['Taskfile.env']
     cmds:
-      - DOCKER_HOST=ssh://$REMOTE_USER@$REMOTE_HOST docker compose --file ./Dockercompose.yml --env-file ./Dockercompose.env logs --follow
+      - DOCKER_HOST=ssh://$REMOTE_USER@$REMOTE_HOST docker compose --file ./Dockercompose.yml --env-file ./Dockercompose.env logs --follow --since 30m
