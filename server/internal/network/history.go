@@ -17,6 +17,7 @@ type SendHistoryRecord struct {
 	Addr    *net.UDPAddr
 	Packet  *protocol.Packet
 	Updated time.Time
+	Created time.Time
 }
 
 func NewSendHistoryRecord(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) *SendHistoryRecord {
@@ -25,6 +26,7 @@ func NewSendHistoryRecord(c *net.UDPConn, a *net.UDPAddr, p *protocol.Packet) *S
 		Addr:    a,
 		Packet:  p,
 		Updated: time.Now(),
+		Created: time.Now(),
 	}
 }
 
@@ -47,6 +49,12 @@ func (s *SendHistoryRecord) GetTime() *time.Time {
 	s.RLock()
 	defer s.RUnlock()
 	return &s.Updated
+}
+
+func (s *SendHistoryRecord) GetCreateTime() *time.Time {
+	s.RLock()
+	defer s.RUnlock()
+	return &s.Created
 }
 
 // SendHistory is responsible for keeping track of all previously sent messages that require acknowledgement.
@@ -91,7 +99,7 @@ func (h *SendHistory) ResendUnAckPackets() {
 	for ident, p := range h.messages {
 
 		// Check is packet is expired
-		if p.GetTime().Before(historyCutoff) {
+		if p.GetCreateTime().Before(historyCutoff) {
 			slog.Info("Deleting expired packet", "Ident", ident)
 			delete(h.messages, ident)
 			continue
