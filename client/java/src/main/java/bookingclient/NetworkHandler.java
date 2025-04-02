@@ -787,6 +787,7 @@ public class NetworkHandler {
                     String packetKey = respHeaderId + ":" + receivedPacket.packetNumber();
                     if (receivedUpdateKeys.add(packetKey)) {
                         Debugger.log("Stored unique monitored update: [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "/" + receivedPacket.totalPackets() + "]");
+                        System.out.println(PacketUnmarshaller.monitoredPayloadBytesToString(receivedPacket.payload()));
                         responsePackets.add(receivedPacket);
                     } else {
                         Debugger.log("Received duplicate monitored packet [RespMsgID: " + respHeaderId + ", Pkt#: " + receivedPacket.packetNumber() + "]. Ignoring content, ACK sent.");
