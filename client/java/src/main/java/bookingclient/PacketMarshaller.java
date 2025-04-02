@@ -1,0 +1,306 @@
+    package bookingclient;
+
+    import java.nio.ByteBuffer;
+    import java.nio.charset.StandardCharsets;
+    import java.util.UUID;
+    import java.util.zip.CRC32;
+
+    public class PacketMarshaller {
+
+        // Method to construct the packet
+        public static byte[] marshalPacket(byte messageType, byte packetNumber, byte totalPackets, boolean ackRequired, boolean fragment, byte[] payload) {
+            // 1. Protocol version (8 bits)
+            byte protocolVersion = 0x01;
+
+            // 2. Message ID (UUID, 128 bits / 16 bytes)
+            UUID messageId = UUID.randomUUID();
+            Debugger.log("[Request] Message ID: " + messageId);
+            byte[] messageIdBytes = UUIDtoByteArray(messageId);
+
+            // 3. Message Type (8 bits)
+            byte msgType = messageType;
+
+            // 4. Packet Number (8 bits)
+            byte packetNo = packetNumber;
+
+            // 5. Total Packets (8 bits)
+            byte totalPacketsByte = totalPackets;
+
+            // 6. Flags (8 bits, for example, Ack Required = 1, Fragment = 0)
+            byte flags = 0;
+            if (ackRequired) {
+                flags |= (1 << 0);  // Set LSB for Ack Required
+            }
+            if (fragment) {
+                flags |= (1 << 1);  // Set 2nd LSB for Fragment
+            }
+
+            // 7. Payload Length (16 bits, size of the payload)
+            short payloadLength = (short) (payload.length);  // +1 byte for Method Identifier (8 bits)
+            // 8. Checksum (32 bits, CRC32 for simplicity)
+            byte[] checksum = calculateChecksum(protocolVersion, messageIdBytes, msgType, packetNo, totalPacketsByte, flags, payloadLength, payload);
+
+            // Allocate a ByteBuffer with sufficient space for all the fields
+            ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + payload.length + 4);
+
+            // Fill the buffer with the data
+            buffer.put(protocolVersion);  // Protocol version
+            buffer.put(messageIdBytes);   // Message ID (UUID)
+            buffer.put(msgType);          // Message Type
+            buffer.put(packetNo);         // Packet Number
+            buffer.put(totalPacketsByte); // Total Packets
+            buffer.put(flags);            // Flags
+            buffer.putShort(payloadLength);  // Payload length (including Method Identifier)
+            buffer.put(payload);          // Payload (Facility Name)
+            buffer.put(checksum);         // Checksum
+
+            // Return the final packet as a byte array
+            return buffer.array();
+        }
+
+        // Convert UUID to byte array (16 bytes)
+        public static byte[] UUIDtoByteArray(UUID uuid) {
+            ByteBuffer buffer = ByteBuffer.wrap(new byte[16]);
+            buffer.putLong(uuid.getMostSignificantBits());
+            buffer.putLong(uuid.getLeastSignificantBits());
+            return buffer.array();
+        }
+
+        // Calculate checksum (simple CRC32 for the whole packet)
+        private static byte[] calculateChecksum(byte protocolVersion, byte[] messageIdBytes, byte msgType, byte packetNo, byte totalPackets, byte flags, short payloadLength, byte[] payload) {
+            // Combine all parts of the packet (excluding checksum itself) into a single byte array
+            ByteBuffer buffer = ByteBuffer.allocate(1 + 16 + 1 + 1 + 1 + 1 + 2 + payload.length);
+            buffer.put(protocolVersion); //1
+            buffer.put(messageIdBytes); //16
+            buffer.put(msgType); //1
+            buffer.put(packetNo); //1
+            buffer.put(totalPackets); //1
+            buffer.put(flags); //1
+            buffer.putShort(payloadLength); // 2
+            buffer.put(payload); //payload.length
+
+            // Use CRC32 for checksum calculation
+            CRC32 crc32 = new CRC32();
+            crc32.update(buffer.array());
+
+            // Return the checksum as a 4-byte array
+            long checksumValue = crc32.getValue();
+            ByteBuffer checksumBuffer = ByteBuffer.allocate(4);
+            checksumBuffer.putInt((int) checksumValue);
+            return checksumBuffer.array();
+        }
+
+        // Verify checksum
+        private static boolean isChecksumValid(byte[] calculatedChecksum, byte[] receivedChecksum) {
+            return ByteBuffer.wrap(calculatedChecksum).equals(ByteBuffer.wrap(receivedChecksum));
+        }
+
+        // Convert byte array to UUID
+        private static UUID fromByteArray(byte[] byteArray) {
+            ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+            long mostSigBits = buffer.getLong();
+            long leastSigBits = buffer.getLong();
+            return new UUID(mostSigBits, leastSigBits);
+        }
+
+        // Helper method to convert byte array to hex string for easier debugging
+        public static String bytesToHex(byte[] byteArray) {
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : byteArray) {
+                hexString.append(String.format("%02X", b));
+            }
+            return hexString.toString();
+        }
+
+        public static byte[] marshalCreateFacilityRequest(String facility) {
+            // Facility Name as the payload
+            byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+            byte methodIdentifier = 0x01;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length);
+            buffer.put(methodIdentifier);
+            buffer.put(facilityBytes);
+            facilityBytes = buffer.array();
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    facilityBytes  // 0x01, Payload (Facility Name)
+            );
+        }
+        public static byte[] marshalDeleteFacilityRequest(String facility) {
+            // Facility Name as the payload
+            byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+            byte methodIdentifier = 0x04;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length);
+            buffer.put(methodIdentifier);
+            buffer.put(facilityBytes);
+            facilityBytes = buffer.array();
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    facilityBytes  // 0x01, Payload (Facility Name)
+            );
+        }
+
+        public static byte[] marshalQueryFacilityRequest(String facility, int numberOfDays) {
+            // Facility Name as the payload
+            byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+            byte numberOfDaysByte = (byte) numberOfDays; // 8 bit
+
+            byte methodIdentifier = 0x02;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + 1);
+            buffer.put(methodIdentifier);
+            buffer.put(numberOfDaysByte);
+            buffer.put(facilityBytes);
+
+            byte[] combinedPayload = buffer.array();
+
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    combinedPayload  // 0x01, Payload (Facility Name)
+            );
+        }
+
+        public static byte[] marshalBookFacilityRequest(String facility, int startTime, int endTime) {
+            // Facility Name as the payload
+            byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+            System.out.println("start: " + startTime + " end: " + endTime + " facility: " + facility);
+
+            byte[] startTimeBytes = new byte[3];
+            byte[] endTimeBytes = new byte[3];
+
+            // Manually shift the bits to extract the 3 least significant bytes
+            startTimeBytes[0] = (byte) (startTime >> 16);  // Most significant byte
+            startTimeBytes[1] = (byte) (startTime >> 8);   // Middle byte
+            startTimeBytes[2] = (byte) (startTime);        // Least significant byte
+
+            endTimeBytes[0] = (byte) (endTime >> 16);  // Most significant byte
+            endTimeBytes[1] = (byte) (endTime >> 8);   // Middle byte
+            endTimeBytes[2] = (byte) (endTime);        // Least significant byte
+
+            byte methodIdentifier = 0x11;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + startTimeBytes.length + endTimeBytes.length);
+            buffer.put(methodIdentifier);
+            buffer.put(startTimeBytes);
+            buffer.put(endTimeBytes);
+            buffer.put(facilityBytes);
+
+
+            byte[] combinedPayload = buffer.array();
+
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    combinedPayload  // 0x01, Payload (StartTime, EndTime, FacilityName)
+            );
+        }
+        public static byte[] marshalModifyBookFacilityRequest(int confirmationCode, int isNegativeOffset, int deltaTime) {
+            String hex = Integer.toHexString(confirmationCode);
+            // convert from string to hex
+            long unsignedLongValue = Long.parseLong(hex, 16);
+
+            // convert to int
+            int unsignedIntValue = (int) (unsignedLongValue & 0xFFFFFFFFL);
+
+            byte[] confirmationCodeBytes = new byte[2];
+            confirmationCodeBytes[0] = (byte) (unsignedIntValue >> 8);
+            confirmationCodeBytes[1] = (byte) (unsignedIntValue & 0xFF);
+
+            byte[] deltaTimeBytes = new byte[3];
+
+            // Manually shift the bits to extract the 3 least significant bytes
+            deltaTimeBytes[0] = (byte) (deltaTime >> 16);  // Most significant byte
+            deltaTimeBytes[1] = (byte) (deltaTime >> 8);   // Middle byte
+            deltaTimeBytes[2] = (byte) (deltaTime);        // Least significant byte
+
+            byte methodIdentifier = 0x12;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + confirmationCodeBytes.length + 1 + deltaTimeBytes.length);
+            buffer.put(methodIdentifier);
+            buffer.put(confirmationCodeBytes);
+
+            byte flags = 0;
+            if (isNegativeOffset == 1) {
+                flags |= (1 << 0);  // Set LSB for isNegativeOffset
+            }
+            buffer.put(flags);
+            buffer.put(deltaTimeBytes);
+
+            byte[] combinedPayload = buffer.array();
+            System.out.println(combinedPayload.length);
+
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    combinedPayload  // 0x01, Payload (Confirmation code, flags, delta hour)
+            );
+        }
+        public static byte[] marshalMonitorFacility(String facility, int TTL) {
+            byte[] facilityBytes = facility.getBytes(StandardCharsets.UTF_8);
+            TTL = TTL & 0xFFFFFF;
+            byte[] ttlBytes = new byte[3];
+            ttlBytes[0] = (byte) ((TTL >> 16) & 0xFF);  // Most significant byte
+            ttlBytes[1] = (byte) ((TTL >> 8) & 0xFF);   // Middle byte
+            ttlBytes[2] = (byte) (TTL & 0xFF);
+            byte methodIdentifier = 0x03;
+            ByteBuffer buffer = ByteBuffer.allocate(1 + facilityBytes.length + 3);
+            buffer.put(methodIdentifier);
+            buffer.put(ttlBytes);  // Put the TTL bytes array directly into the buffer
+            buffer.put(facilityBytes);
+            byte[] combinedPayload = buffer.array();
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    combinedPayload  // 0x01, Payload
+            );
+        }
+
+        public static byte[] marshalDeleteBookingRequest(int confirmationCode) {
+            String hex = Integer.toHexString(confirmationCode);
+
+            // convert from string to hex
+            long unsignedLongValue = Long.parseLong(hex, 16);
+
+            // convert to int
+            int unsignedIntValue = (int) (unsignedLongValue & 0xFFFFFFFFL);
+
+            byte[] confirmationCodeBytes = new byte[2];
+            confirmationCodeBytes[0] = (byte) (unsignedIntValue >> 8);
+            confirmationCodeBytes[1] = (byte) (unsignedIntValue & 0xFF);
+
+            byte methodIdentifier = 0x13;
+
+            // Allocate buffer with the size for the method identifier + the confirmationCode bytes
+            ByteBuffer buffer = ByteBuffer.allocate(1 + 2);
+            buffer.put(methodIdentifier);  // Add method identifier
+            buffer.put(confirmationCodeBytes);
+
+            byte[] payload = buffer.array();
+
+            return marshalPacket(
+                    (byte) 0x02,  // Message Type (Request)
+                    (byte) 0x00,  // Packet Number (0)
+                    (byte) 0x01,  // Total Packets (1)
+                    true,          // Ack Required
+                    false,         // Fragment
+                    payload  // Payload (confirmationCode in bytes)
+            );
+        }
+    }
