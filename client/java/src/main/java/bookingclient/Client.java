@@ -19,7 +19,6 @@ class MenuState implements ClientState{
         System.out.println("4. Monitor Facility");
         System.out.println("5. Create Facility");
         System.out.println("6. Delete Facility");
-        System.out.println("7. List Facilities");
         System.out.println("8. Delete Booking");
         System.out.println("9. Modify Booking V2");
         System.out.println("10. Exit");
@@ -122,7 +121,6 @@ class DeleteFacilityState implements ClientState{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Deleted Facility Name " + facility);
         // After processing, return to MenuState
         client.setState(new MenuState());
         client.handleRequest();
@@ -180,7 +178,7 @@ class QueryFacilityState implements ClientState{
 class BookFacilityState implements ClientState{
     @Override
     public void handleRequest(Client client) {
-        String facility = client.getUserInputUtils().getStringInput("Query Facility Name:");
+        String facility = client.getUserInputUtils().getStringInput("Book Facility Name:");
         int startTime = client.getUserInputUtils().getIntInput("Enter hours since UNIX (startTime: " + getHoursSinceUnix() + "): ");
         int endTime = client.getUserInputUtils().getIntInput("Enter hours since UNIX (endTime: " + getHoursSinceUnix() + "): ");
 
